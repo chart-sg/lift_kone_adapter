@@ -1,16 +1,10 @@
 #!/usr/bin/python
+from pprint import pprint
 import requests, json
-import pprint
-import websocket, websockets
-from websocket import create_connection
-from websockets import connect
-from requests.sessions import ChunkedEncodingError, session
-import time
 
 # from rmf_lift_msgs.msg import LiftState, LiftRequest
 
 import yaml
-import logging
 from typing import Dict, List, Tuple
 
 import rclpy
@@ -20,57 +14,6 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 
-class koneAdaptor:
-    def __init__(
-        self, access_id: str, access_secret: str, liftName: str, logger: logging
-    ):
-
-        self.token_response = requests.post(
-            self.auth_server_url,
-            data=self.token_req_payload,
-            allow_redirects=False,
-            headers=self.requestHeaders,
-            auth=(self.client_id, self.client_secret),
-        )
-        responseInDict = json.loads(self.token_response.content)
-        print(responseInDict)
-        self.loadSessionParameters(responseInDict)
-        # print(self.buildingID)
-        self.logger.info("Session parameters loaded")
-        self.connectionURL = (
-            "wss://dev.kone.com/stream-v1?accessToken=" + self.sessionToken
-        )
-        self.getBuildingTopo(self.buildingID)
-        # return self.sessionToken
-
-    def printBuildingDetails(self):
-        self.getToken()
-        self.logger.info("Building ID is:%s" % self.buildingID)
-        self.logger.info("Lift group is:%s" % self.liftGroup)
-        self.logger.info("Lift IDs are:%s" % self.liftIDList)
-        self.logger.info("Lift names are:%s" % self.liftNameList)
-        self.logger.info("Available floors are: %s" % self.listOfAvailableFloors)
-
-    def getToken(self):
-        self.token_response = requests.post(
-            self.auth_server_url,
-            data=self.token_req_payload,
-            allow_redirects=False,
-            headers=self.requestHeaders,
-            auth=(self.client_id, self.client_secret),
-        )
-        responseInDict = json.loads(self.token_response.content)
-        print(responseInDict)
-        self.loadSessionParameters(responseInDict)
-        # print(self.buildingID)
-        self.logger.info("Session parameters loaded")
-        self.connectionURL = (
-            "wss://dev.kone.com/stream-v1?accessToken=" + self.sessionToken
-        )
-        self.getBuildingTopo(self.buildingID)
-        return self.sessionToken
-
-
 class koneAdaptor(rclpy.node.Node):
     def __init__(self):
         super().__init__("minimal_param_node")
@@ -78,22 +21,15 @@ class koneAdaptor(rclpy.node.Node):
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
         self.parsed_yaml = self.get_config()
-
         self.token_response = requests.post(
-            self.parsed_yaml["auth_server_url"],
-            data=self.token_req_payload,
+            url=self.parsed_yaml["auth_server_url"],
+            data=self.parsed_yaml["token_req_payload"],
             allow_redirects=False,
-            headers=self.requestHeaders,
-            auth=(self.access_id, self.access_secret),
+            headers=self.parsed_yaml["requestHeaders"],
+            auth=(self.parsed_yaml["access_id"], self.parsed_yaml["access_secret"]),
         )
         responseInDict = json.loads(self.token_response.content)
-        print(responseInDict)
-        self.loadSessionParameters(responseInDict)
-        # print(self.buildingID)
-        self.logger.info("Session parameters loaded")
-        # self.connectionURL = (
-        #     "wss://dev.kone.com/stream-v1?accessToken=" + self.sessionToken
-        # )
+        pprint(responseInDict)
 
     def timer_callback(self):
         self.get_logger().info("Running")  #% my_param)
@@ -105,12 +41,36 @@ class koneAdaptor(rclpy.node.Node):
         with open(config, "r") as stream:
             try:
                 parsed_yaml = yaml.safe_load(stream)
-                print(parsed_yaml)
-                print("Succcess reading env.yaml")
+                # print(parsed_yaml)
+                self.get_logger().info("Succcess reading env.yaml")
             except yaml.YAMLError as exc:
-                print(exc)
-                print("Failure reading env.yaml")
+                # print(exc)
+                self.get_logger().info("Failure reading env.yaml")
             return parsed_yaml
+
+
+def make_elevator_call():
+    pass
+
+
+def hold_car_door_open():
+    pass
+
+
+def cancel_elevator_call():
+    pass
+
+
+def site_monitoring():
+    pass
+
+
+def common_commands():
+    pass
+
+
+def monitoring_events():
+    pass
 
 
 def main():
