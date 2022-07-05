@@ -47,6 +47,7 @@ class koneAdaptor:
         self.client_id = config_yaml['access_id']
         self.client_secret = config_yaml['access_secret']
         self.buildingID = config_yaml['buildingId']
+        self.door_holding_duration = config_yaml['liftdoor_holding_duration']
         self.token_response = None
         # note the square bracket for WebSocketApp purposes
         
@@ -74,7 +75,7 @@ class koneAdaptor:
         
         self.current_liftstate_list = []
         self.last_active_timestamp_for_liftstate_ws = 0
-        self.door_holding_duration = 7
+        
 
 
         print("KoneAdaptor V2 is alive!")
