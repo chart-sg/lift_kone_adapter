@@ -22,7 +22,7 @@ class LiftNode(Node):
         self.node_name = f"{lift_name}_lift_node"
         super().__init__(self.node_name)
 
-        #sandbox 
+        #sandbox
         self.clientID = '160fd5a3-2010-4348-8aec-644bb100bb93'
         self.clientSecret = '592a91ee0c89005933d6cef74ff0bb66cd9953d5f19c4e57d4ea6b6e7810c4c3'
         self.buildingID = "building:HxKjGc3knnh" 
@@ -32,7 +32,6 @@ class LiftNode(Node):
 
         # Var for storing previous session, currently is manually init, *TODO get from building topo
         self.prev_rmf_lift_request = []
-        self.prev_rmf_lift_request.append(LiftRequest)
         self.prev_rmf_lift_request.append(LiftRequest)
         self.prev_rmf_lift_request.append(LiftRequest)
         self.prev_rmf_lift_request.append(LiftRequest)
@@ -120,11 +119,6 @@ class LiftNode(Node):
         # Thsi is a valid lift request, update the request info now
         current_dest_floor = msg.destination_floor
         current_source_floor = self.koneAdaptorGalen.current_liftstate_list[current_lift_index].current_floor
-        # lift_selected = self.koneAdaptorGalen.liftnameliftIndexDict[msg.lift_name]
-        # current_source_floor_areaID = dict((v,k) for k,v in self.koneAdaptorGalen.areaLevelDict.items()).get(current_source_floor[1:])
-        # current_dest_areaID = dict((v,k) for k,v in self.koneAdaptorGalen.areaLevelDict.items()).get(current_dest_floor[1:])
-        
-
 
         if current_dest_floor != current_source_floor :
 
@@ -133,10 +127,6 @@ class LiftNode(Node):
             self.get_logger().info(
                 "Sending lift command paylod now. Lift: %s, Destination Floor: %s" %(msg.lift_name, msg.destination_floor)
             )
-            # payload = self.koneAdaptorGalen.generatePayload_LiftDestinationCall(current_source_floor,current_dest_floor,msg.lift_name)
-            # self.get_logger().info("Payload is %s" % payload)
-            # self.koneAdaptorGalen.sendLiftCommand(payload)
-            # self.koneAdaptorGalen.runSocketTilComplete()
             
             self.koneAdaptorGalen.liftDestinationCall(current_source_floor, current_dest_floor, msg.lift_name)
 

@@ -30,28 +30,13 @@ class koneAdaptor:
         self.requestHeaders = {"Content-Type": "application/x-www-form-urlencoded"}
         self.subproto = ["koneapi"]
 
+        # galen lift
+        # self.token_req_payload = {"grant_type": "client_credentials", "scope": "robotcall/group:PZFtaS27eW:1 application/inventory", } # PZFtaS27eW is the building id for Galen
+
         # sandbox lift
         self.token_req_payload = {"grant_type": "client_credentials", "scope": "robotcall/* application/inventory", }
         
-        # manually set AreaID:Floor mapping (used in [landing] info from liftstate websocket)
-        self.areaLevelDict = {
-            "1000": "1",
-            "2000": "2",
-            "3000": "3",
-            "4000": "4",
-            "5000": "5",
-            "6000": "6"
-        }
-        # could be retrieved from building topo, add this to *TODO list
-        self.liftnameliftIndexDict = {
-            "A": "1001010",
-            "B": "1001020",
-            "C": "1001030",
-            "D": "1001040"
-        }
-        # manually set available floor, could be retrieved from building topo, add this to *TODO list
-        self.BuildingAvailableFloor = ["L1", "L2", "L3", "L4", "L5", "L6"]
-        
+
         #####################################
         #####################################
 
@@ -72,9 +57,17 @@ class koneAdaptor:
         self.liftstate_monitoring_topic_list= []
         self.liftNameList = []
         self.liftGroup = None
+        self.floorAreaList = []
+        self.floorNameList = []
+        self.liftDeckList = []
+        self.areaLevelDict = {}
+        self.liftnameliftDeckDict = {}
+        self.BuildingAvailableFloor = []
+
 
         self.ws = None
         self.ws_state = None
+        self.ws_config = None
         self.listOfMessage = []
         
         self.current_liftstate_list = []
@@ -84,9 +77,9 @@ class koneAdaptor:
 
         print("KoneAdaptor V2 is alive!")
         self.getToken()
-        self.getBuildingTopo(self.buildingID)
+        self.getLiftConfig() # getting buildingTopo for api v2
         self.initCurrentLiftstateList()
-        # pprint(self.get_config())
+
 
     # def get_config(self):
     #     config = os.path.join(
@@ -110,7 +103,7 @@ class koneAdaptor:
             self.current_liftstate_list[i].available_modes =  [0, 1, 2, 3, 4, 5]
             self.current_liftstate_list[i].current_mode = 2
             self.current_liftstate_list[i].available_floors = self.BuildingAvailableFloor
-            self.current_liftstate_list[i].current_floor = "L6"
+            self.current_liftstate_list[i].current_floor = "L1"
             self.current_liftstate_list[i].door_state = 0
             self.current_liftstate_list[i].motion_state = 0
 
@@ -135,7 +128,6 @@ class koneAdaptor:
         self.connectionURL = (
             "wss://dev.kone.com/stream-v2?accessToken=" + self.sessionToken
         )
-        #self.getBuildingTopo(self.buildingID)
 
 
     def getResource(self):
@@ -166,6 +158,34 @@ class koneAdaptor:
         pprint(responseinDict)
         print('\n')
 
+    def getUserInfo(self):
+        self.token_response = requests.post(
+            self.auth_server_url,
+            data=self.token_req_payload,
+            allow_redirects=False,
+            headers=self.requestHeaders,
+            auth=(self.client_id, self.client_secret),
+        )
+        responseInDict = json.loads(self.token_response.content)
+        self.sessionToken = responseInDict['access_token']
+        self.scopeOfAccess = responseInDict['scope']
+        print ("\naccess_token: ")
+        pprint(self.sessionToken)
+        print ("\nscope: ")
+        pprint(self.scopeOfAccess)
+
+        getResourceURL = self.baseURL + '/api/v2/oauth2/userinfo'
+        #print (getResourceURL)
+        bearer = "Bearer" + " " + self.sessionToken
+        resourceRequestHeader = {'Authorization': bearer}
+        resourceResponse = requests.get(getResourceURL, headers=resourceRequestHeader)
+        responseinDict = json.loads(resourceResponse.content)
+        
+        print('\n')
+        print("HERE ARE THE RAW USER INFO DATA: \n")
+        pprint(responseinDict)
+        print('\n')
+
     def getBuildingConfig(self):
         self.token_response = requests.post(
             self.auth_server_url,
@@ -192,53 +212,6 @@ class koneAdaptor:
         self.sendLiftCommand(payload)
         self.runSocketTilComplete()
 
-    def getBuildingTopo(self, buildingID):
-        getbuildingURL = '/api/v1/buildings/' + buildingID
-        buildingTopoRequestURL = self.baseURL + getbuildingURL
-        bearer = "Bearer" + " " + self.sessionToken
-        buildingTopoRequestHeader = {'Authorization': bearer}
-        buildingResponse = requests.get(buildingTopoRequestURL, headers=buildingTopoRequestHeader)
-        responseinDict = json.loads(buildingResponse.content)
-        
-        # print("\nHERE ARE THE RAW BUILDING TOPO DATA: \n", responseinDict)
-        # print("HERE ARE THE RAW BUILDING TOPO DATA: \n")
-        # pprint(responseinDict)
-
-        self.liftGroup = responseinDict["groups"][0]["groupId"]
-
-        if len(responseinDict["groups"][0]["lifts"]) > 1:
-            for lift in responseinDict["groups"][0]["lifts"]:
-                self.liftNameList.append(lift["liftName"])
-        else:   # ???
-            self.liftNameList.append(
-                responseinDict["groups"][0]["lifts"][0]["liftName"]
-            )
-
-        if len(responseinDict["groups"][0]["lifts"]) > 1:
-            for lift in responseinDict["groups"][0]["lifts"]:
-                self.liftIDList.append(lift["liftId"])
-        else:   # ???
-            self.liftIDList.append(responseinDict["groups"][0]["lifts"][0]["liftId"])
-
-        # generate liftstate monitoring subtopic based on liftid feedback from building topo
-        try:
-            for i in range (len(self.liftIDList)):
-                decoded_data = self.liftIDList[i].split(":")
-                topic = "lift_" + decoded_data[-1] + "/doors"
-                self.liftstate_monitoring_topic_list.append(topic)
-        except:
-            self.liftstate_monitoring_topic_list = ["lift_1/doors", "lift_2/doors", "lift_3/doors"]
-
-        print ("\nBuilding ID: " + buildingID)
-        print ("Lift group: " + str(self.liftGroup))
-        print ("Lift name: " + str(self.liftNameList)) 
-        print ("Lift ID: " + str(self.liftIDList))
-        print ("Liftstate monitoring Topic List: " + str(self.liftstate_monitoring_topic_list))
-        print('\n')
-        # print ("\nresponceInDict groups 0 lift 1: ")
-        # print(responseinDict['groups'][0]['lifts'][1])
-        # print ("\n")
-
     def sendLiftCommand(self, payload):
         print("sending lift command with the following payload %s" % payload)
         self.ws = websocket.WebSocketApp(
@@ -251,7 +224,7 @@ class koneAdaptor:
         )
 
     def openLiftStateWS(self):
-        print ("Open liftstate websocket.")
+        print ("\nOpen liftstate websocket.")
         self.last_active_timestamp_for_liftstate_ws = time.time()
 
         payload = {"type": "site-monitoring",
@@ -280,9 +253,13 @@ class koneAdaptor:
         self.ws_state.close()
 
     def closeSocketMsg(self, closeCode):
-        print("###################### WEBSOCKERCLOSING ########################")
-        print("Websocket closed session with CloseCode: ", closeCode)
+        # print("###################### WEBSOCKERCLOSING ########################")
+        # print("Websocket closed session with CloseCode: ", closeCode)
         self.ws.close()
+    
+    def closeSocketMsg_config(self, closeCode):
+        # print("Websocket liftconfig closed session with CloseCode: ", closeCode)
+        self.ws_config.close()
 
     def onSocketMsg_liftstate(self, message):
         self.last_active_timestamp_for_liftstate_ws = time.time()
@@ -300,8 +277,8 @@ class koneAdaptor:
 
     def onSocketMsg(self, message):
         msg = json.loads(message)
-        print("\nreceived message: ")
-        pprint(msg)
+        # print("\nreceived message: ")
+        # pprint(msg)
         try:
             typeOfMsg = msg["statusCode"]
         except:
@@ -312,15 +289,109 @@ class koneAdaptor:
             print ("Received lift command ack.")
             self.closeSocketMsg(0)
 
+    def decodeLiftConfigMsg(self, msg):
+        lift_group_selected = 0 # to get the first lift group
+
+        try:
+            responseinDict = msg["data"]
+            self.liftGroup = responseinDict["groups"][lift_group_selected]["group_id"]
+        except:
+            print ("Error in getting group with group index: " + str(lift_group_selected))
+
+        # getting lifts name, lift id, lift deck
+        try:
+            for lift in responseinDict["groups"][lift_group_selected]["lifts"]:
+                self.liftNameList.append(lift["lift_name"])
+                self.liftIDList.append(lift["lift_id"])
+                self.liftDeckList.append(lift["decks"][0]["area_id"])
+                self.liftnameliftDeckDict[lift["lift_name"]] = lift["decks"][0]["area_id"]
+        except:
+            print ("Error in getting lifts name, lift id, lift deck.")
+
+        # getting area id 
+        try:
+            for dest in responseinDict["destinations"]:
+                self.floorAreaList.append(dest["area_id"])
+                self.floorNameList.append(dest["short_name"])
+                floor_name_from_config = ""
+                if dest["short_name"][0] == "B":
+                    floor_name_from_config = dest["short_name"]
+                else:
+                    floor_name_from_config = "L" + dest["short_name"]
+                self.areaLevelDict[dest["area_id"]] = floor_name_from_config
+                self.BuildingAvailableFloor.append(floor_name_from_config)
+        except:
+            print ("Error in getting floorAreaList, floorNameList.")
+
+        # generate liftstate monitoring subtopic based on liftid feedback from building topo
+        try:
+            for i in range (len(self.liftIDList)):
+                topic = "lift_" + str(self.liftIDList[i]) + "/doors"
+                self.liftstate_monitoring_topic_list.append(topic)
+        except:
+            print ("Error in generating liftstate monitoring subtopic.")
+            self.liftstate_monitoring_topic_list = ["lift_1/doors", "lift_2/doors", "lift_3/doors"]
+
+
+        print ("\nGetting lift config:")
+        print ("Building ID: " + self.buildingID)
+        print ("Lift group: " + str(self.liftGroup))
+        print ("Lift name: " + str(self.liftNameList)) 
+        print ("Lift ID: " + str(self.liftIDList))
+        print ("Lift deck name: " + str(self.liftDeckList))
+        print ("Floor Area: " + str(self.floorAreaList))
+        print ("Floor name: " + str(self.floorNameList))
+        print ("areaLevelDict: " + str(self.areaLevelDict))
+        print ("liftnameliftDeckDict: " + str(self.liftnameliftDeckDict))
+        print ("Liftstate monitoring Topic List: " + str(self.liftstate_monitoring_topic_list))
+        print('\n')
+
+
+    def onSocketMsg_liftconfig(self, message):
+        msg = json.loads(message)
+        # print("\nreceived liftconfig message: ", message)
+        try:
+            typeOfMsg = msg["statusCode"]
+        except:
+            typeOfMsg = msg["callType"]
+        if typeOfMsg == "config":
+            # pprint (msg)
+            self.decodeLiftConfigMsg(msg)
+            self.closeSocketMsg_config(0)
+        elif typeOfMsg == 201:
+            print ("Received lift config ack.")
+            
+
+    def openLiftConfigWS(self):
+        print ("\nOpen liftconfig websocket.")
+
+        payload = {"type": "common-api",
+            "requestId": "1",
+            "buildingId": self.buildingID,
+            "callType": "config",
+            "groupId": "1",
+            }
+
+        self.ws_config = websocket.WebSocketApp(
+            url=self.connectionURL,
+            subprotocols=self.subproto,
+            on_message=lambda ws_config, msg: self.onSocketMsg_liftconfig(msg),
+            on_error=lambda ws_config, msg: self.onSocketError(msg),
+            on_open=lambda ws_config: self.sendCommandviaSocket_config(payload),
+            on_close=lambda ws_config, closeCode, closeMsg: self.closeSocketMsg_config(closeCode),
+        )
+
     def sendCommandviaSocket(self, payload):
-        # print("doing sending tasks\n")
         print("Payload sent: ", payload)
         self.ws.send(json.dumps(payload))
     
     def sendCommandviaSocket_state(self, payload):
-        # print("doing sending tasks\n")
         print("Payload sent: ", payload)
         self.ws_state.send(json.dumps(payload))
+
+    def sendCommandviaSocket_config(self, payload):
+        print("Payload sent: ", payload)
+        self.ws_config.send(json.dumps(payload))
 
     def onSocketError(self, msg):
         self.listOfMessage.append(msg)
@@ -328,6 +399,10 @@ class koneAdaptor:
 
     def runSocketTilComplete(self):
         self.ws.run_forever()
+        return False
+
+    def runSocketTilComplete_config(self):
+        self.ws_config.run_forever()
         return False
 
     def runSocketTilComplete_state(self):
@@ -338,7 +413,7 @@ class koneAdaptor:
         # only update floor, door state here
 
         cur_liftname = 0
-        cur_floor = 0
+        cur_floor = "L1"
         cur_doorstate = 0
         try:
             msg_content = msg["subtopic"].split("/")
@@ -355,22 +430,22 @@ class koneAdaptor:
         
         # Holding door opening time
         if (cur_doorstate in [1,2]):    # door state = OPENING/OPENED
-            self.liftDoorHoldingCall("L" + str(cur_floor), self.current_liftstate_list[int(cur_liftname)-1].lift_name, self.door_holding_duration)
-            print("Holding lift " + self.current_liftstate_list[int(cur_liftname)-1].lift_name + " door at " + "L" + str(cur_floor))
+            # self.liftDoorHoldingCall(str(cur_floor), self.current_liftstate_list[int(cur_liftname)-1].lift_name, self.door_holding_duration)
+            print("NOT Holding lift " + self.current_liftstate_list[int(cur_liftname)-1].lift_name + " door at " + str(cur_floor))
 
-        self.current_liftstate_list[int(cur_liftname)-1].current_floor = "L" + str(cur_floor)
+        self.current_liftstate_list[int(cur_liftname)-1].current_floor = str(cur_floor)
         self.current_liftstate_list[int(cur_liftname)-1].door_state = cur_doorstate
 
         print ("Updated LiftState lift: " + self.current_liftstate_list[int(cur_liftname)-1].lift_name + ", floor: " + self.current_liftstate_list[int(cur_liftname)-1].current_floor + ", door: " + str(self.current_liftstate_list[int(cur_liftname)-1].door_state)+ ","+ msg["data"]["state"])
 
 
     def getCurrentFloor(self, msg):
-        current_floor = 0
+        current_floor = "L1"
         areaID = msg["data"]["landing"]
         try:
-            current_floor = self.areaLevelDict[str(areaID)]
+            current_floor = self.areaLevelDict[areaID]
         except:
-            current_floor = 1
+            current_floor = "L1"
         return current_floor
 
     def getDoorState(self, msg):
@@ -395,9 +470,9 @@ class koneAdaptor:
         self.current_liftstate_list[lift_index].session_id = newSessionID
 
     def generatePayload_LiftDestinationCall(self, sourceLvl, destLvl, liftname):
-        lift_selected = self.liftnameliftIndexDict[liftname]
-        current_source_floor_areaID = dict((v,k) for k,v in self.areaLevelDict.items()).get(sourceLvl[1:])
-        current_dest_areaID = dict((v,k) for k,v in self.areaLevelDict.items()).get(destLvl[1:])
+        lift_selected = self.liftnameliftDeckDict[liftname]
+        current_source_floor_areaID = dict((v,k) for k,v in self.areaLevelDict.items()).get(sourceLvl)
+        current_dest_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(destLvl))
         payload = {
             "type": "lift-call-api-v2",
             "buildingId": self.buildingID,
@@ -423,8 +498,8 @@ class koneAdaptor:
         self.runSocketTilComplete()
 
     def generatePayload_DoorHolding(self, floor, liftname, holding_duration):
-        lift_selected = self.liftnameliftIndexDict[liftname]
-        floor_areaID = dict((v,k) for k,v in self.areaLevelDict.items()).get(floor[1:])
+        lift_selected = self.liftnameliftDeckDict[liftname]
+        floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(floor))
         print ("Door holding lift: " + str(lift_selected) + "; floor: " + floor_areaID)
         payload ={
                     "type": "lift-call-api-v2",
@@ -447,8 +522,8 @@ class koneAdaptor:
         self.runSocketTilComplete()
 
     def generatePayload_LiftLandingCall(self, sourceLvl, liftname):
-        lift_selected = self.liftnameliftIndexDict[liftname]
-        source_floor_areaID = dict((v,k) for k,v in self.areaLevelDict.items()).get(sourceLvl[1:])
+        lift_selected = self.liftnameliftDeckDict[liftname]
+        source_floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(sourceLvl))
 
         payload = {
             "type": "lift-call-api-v2",
@@ -472,6 +547,11 @@ class koneAdaptor:
         payload = self.generatePayload_LiftLandingCall(sourceLvl, liftname)
         self.sendLiftCommand(payload)
         self.runSocketTilComplete()
+    
+    def getLiftConfig(self):
+        self.openLiftConfigWS()
+        self.runSocketTilComplete_config()
+
 
 def main():
     #ONLY USED FOR ISOLATED TESTING
@@ -484,6 +564,7 @@ def main():
     
     galenAdaptor = koneAdaptor(clientID, clientSecret, buildingId)
     # galenAdaptor.getResource()
+    # galenAdaptor.getUserInfo()
     # galenAdaptor.getBuildingConfig()
 
     #real lift
@@ -559,7 +640,8 @@ def main():
 
     # galenAdaptor.liftDoorHoldingCall("L3", "C", 10)
     #galenAdaptor.liftLandingCall("L3","D")
-
+    # galenAdaptor.openLiftConfigWS()
+    # galenAdaptor.runSocketTilComplete_config()
     
 if __name__ == '__main__':
     main()
