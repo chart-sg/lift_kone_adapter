@@ -1,0 +1,1153 @@
+asyncapi: 2.3.0
+info:
+  title: Elevator Call API 2.0
+  version: v2
+  description: >
+
+    With Elevator Call API you can implement elevator call-giving features in
+    the applications of your choice. Through Elevator Call API, an application
+    can execute elevator calls and receive real-time data about the call and the
+    assigned elevator.
+
+
+    ## Usage example: lift-call
+
+
+    1. Acquire accessToken
+
+
+    2. Open WebSocket connection
+
+
+
+    ```
+
+    const ws = new
+    WebSocket(`wss://dev.kone.com/stream-v2?accessToken=${accessToken}`,
+    'koneapi')
+
+
+    ```
+
+    3. Within the connection, make the lift-call
+
+
+    ``` const liftCallPayload = {
+       type: 'lift-call-api-v2',
+       buildingId: 'building:9990000951',
+       callType: 'action',
+       groupId: '1',
+       payload: {
+         request_id: 252390420,
+         area: 3000,
+         time: '2020-10-10T07:17:33.298515Z',
+         terminal: 1,
+         call: { 
+           action: 2, 
+           destination: 5000 
+         }
+      }
+    } 
+
+    ws.send(JSON.stringify(liftCallPayload))
+
+    ws.on('message', (data: any) => {
+      // message received from the device
+    })
+
+    ```
+
+    #### Additional information:
+
+    The websocket connection will be automatically disconnect after 60 seconds
+    of inactivity. And after 2 hours even it has been active.
+servers:
+  production:
+    url: wss://dev.kone.com/stream-v2
+    protocol: wss
+    description: |
+      connect: wss://dev.kone.com/stream-v2?accessToken=${accessToken}
+channels:
+  /:
+    bindings:
+      ws:
+        description: >-
+          The websocket is automatically disconnected by server after 10 minutes
+          without status updates.
+        query:
+          type: string
+          properties:
+            Authorization:
+              type: string
+              required: true
+              description: OAuth 2.0 JWT Bearer token as specified by RFC 6750
+        bindingVersion: v1
+    subscribe:
+      operationId: makeLiftCall
+      summary: Make a lift call or create a session
+      message:
+        oneOf:
+          - $ref: '#/components/messages/lift-call'
+          - $ref: '#/components/messages/create-session'
+          - $ref: '#/components/messages/resume-session'
+          - $ref: '#/components/messages/cancel-call'
+          - $ref: '#/components/messages/site-monitoring'
+          - $ref: '#/components/messages/common-api'
+    publish:
+      operationId: updates
+      summary: Updates for a lift-call & door and deck updates
+      message:
+        oneOf:
+          - $ref: '#/components/messages/monitor-lift-status'
+          - $ref: '#/components/messages/monitor-lift-position'
+          - $ref: '#/components/messages/monitor-lift-stopping'
+          - $ref: '#/components/messages/monitor-next-stop-eta'
+          - $ref: '#/components/messages/monitor-door-state'
+          - $ref: '#/components/messages/monitor-call-state'
+          - $ref: '#/components/messages/monitor-deck-position'
+          - $ref: '#/components/messages/monitor-action'
+components:
+  messages:
+    create-session:
+      description: >
+        Each elevator call request is linked to a certain WebSocket connection
+        and this link is automatically cut off once the connection is closed.
+        Use the create-session request to receive a new sessionId needed for
+        reactivating a lost connection. Once a new connection is established,
+        create-session or below explained resume-session should be the first
+        requests made.
+
+        Response status codes should be interpreted as in the HTTP
+        specification: 201 - Session was created 400 - Payload validation error
+        401 - Not authenticated or token expired 500 - Internal error
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            enum:
+              - create-session
+            example: create-session
+            description: |
+              Identifies this message as a request to create a session
+          requestId:
+            type: string
+            example: 08c5ff6c-a8fe-405b-bde3-ffcd6935573b
+            description: >
+              Identifier for the request. The identifier should be unique within
+              one connection. If not provided, one will be generated
+              automatically
+        required:
+          - type
+    resume-session:
+      description: >
+        Use the resume-session request to reactivate a previously created
+        session. The new connection will assume ownership of the previous
+        sessions, active requests and new events related to requests made
+        earlier. You can also receive latest state messages relevant to a
+        session. To prevent a potential session theft, authentication token with
+        matching application and user ID (when present) are needed when resuming
+        a session. There can only be one active session at once in one
+        connection. In case there is an open connection linked to the session,
+        the previous connection is immediately closed.
+
+        Response status codes should be interpreted as in the HTTP
+        specification: 201 - The session has been resumed 400 - Invalid request.
+        Either validation error or trying to resume own session 401 - Not
+        authenticated or token expired 404 - Invalid session id 500 - Internal
+        error
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            enum:
+              - resume-session
+            example: resume-session
+            description: |
+              Identifies this message as a request to resume a session
+          requestId:
+            type: string
+            example: 08c5ff6c-a8fe-405b-bde3-ffcd6935573b
+            description: >
+              Identifier for the request. The identifier should be unique within
+              one connection. If not provided, one will be generated
+              automatically
+          sessionId:
+            type: string
+            example: 55bf5b37-e0b8-a2s0-8dcf-dc8c4aefc321
+            description: |
+              Session identifier
+          resendLatestStateUpToSeconds:
+            type: number
+            example: 30
+            description: |
+              The time in seconds until the latest state data is re-sent
+        required:
+          - type
+          - sessionId
+    cancel-call:
+      description: >
+        Use the cancel-call request to cancel a previously created lift call by
+        providing the requestId of the specific call.
+
+        Receiving a successful acknowledgment for cancel-call does not always
+        guarantee that the cancellation will be acted upon. Successful
+        cancellation results to lift-call-state event sent as canceled for the
+        original lift-call request.
+
+        Response status codes should be interpreted as in the HTTP
+        specification: 202 - Accepted 400 - Payload validation error 401 - Not
+        authenticated or token expired 404 - Invalid cancelRequestId 409 -
+        Request was not in cancellable state 500 - Internal error
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            enum:
+              - lift-call-api-v2
+            example: lift-call-api-v2
+            description: |
+              Identifies this message as a request to cancel a lift call
+          cancelRequestId:
+            type: string
+            example: 08c5ff6c-a8fe-405b-bde3-ffcd6935573b
+            description: |
+              The requestId of the in-progress request to cancel.
+          requestId:
+            type: string
+            example: ca3ca81d-84cf-466b-bd5e-899b7d92c9d5
+            description: >
+              Identifier for the request. The identifier should be unique within
+              one connection. If not provided, one will be generated
+              automatically
+        required:
+          - type
+          - cancelRequestId
+    lift-call:
+      description: >
+        Create a destination lift call. A destination call sets both the
+        sourceId and the destinationId. Areas relate to a building topology
+        information found from the building config action
+
+        The default behavior for calls is to close the connection after the
+        client is not expecting any more state events from the call. If the
+        client does not specify any monitoring events, the connection will be
+        closed after receiving the response. If client needs to create
+        consecutive calls it can specify keepAlive flag to keep the connection
+        open for up to two hours.
+
+        Response status codes should be interpreted as in the HTTP
+        specification: 201 - Call has been registered to the system. 400 - Call
+        payload validation error. 401 - Not authenticated or token expired. 403
+        - Client is forbidden from performing the request. Please check the
+        provided scopes. 404 - Invalid building id. 409 - Conflicting request.
+        Eg. requestId not unique within the connection. 500 - Internal error.
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            enum:
+              - lift-call-api-v2
+            example: lift-call-api-v2
+            description: >
+              Creating a lift-call gives the possibility to generate either a
+              destination call or a landing call
+          callType:
+            type: string
+            enum:
+              - action
+              - hold_open
+              - delete
+            example: action
+            description: >
+              call type is one of following, action, hold_open and delete.
+              Action can be used to make either landing or destination calls.
+              Hold_open is used to send the request to lift door to hold open
+              for a specified amount of time. Delete is used to delete the
+              existing call. However the call is not guaranteed to be deleted. 
+          payload:
+            type: object
+            properties:
+              request_id:
+                type: string
+                enum:
+                  - request_id
+                example: '5124235256'
+                description: |
+                  Unique request ID to pair response to correct request
+              area:
+                type: number
+                enum:
+                  - area
+                example: 3000
+                description: >
+                  The area where the action is made at. Also known as 'source
+                  floor'.
+              time:
+                type: string
+                enum:
+                  - time
+                example: '2020-10-10T07:17:33.298515Z'
+                description: |
+                  ISO 8601 time string
+              media_id:
+                type: string
+                enum:
+                  - media_id
+                example: 0123345abcd
+                description: |
+                  Access control unlock for the media id for the selected action
+              media_cc:
+                type: string
+                enum:
+                  - media_cc
+                example: '0123'
+                description: |
+                  Company code portion of the media id
+              media_type:
+                type: string
+                enum:
+                  - RFID
+                example: RFID
+                description: |
+                  Needed for access control based calls
+              terminal:
+                type: number
+                enum:
+                  - terminal
+                description: |
+                  Terminal ID where the action is made at
+              call:
+                type: object
+                properties:
+                  action:
+                    type: number
+                    enum:
+                      - action
+                    desctiption: >
+                      Action Id for landing calls, destination calls and car
+                      calls
+                    example: 2
+                  language:
+                    type: string
+                    enum:
+                      - en-GB
+                    desctiption: >
+                      When signaling at terminal, preferred signaling language
+                      can be provided, if the terminal supports this feature and
+                      contains localization for the requested language
+                    example: en-GB
+                  delay:
+                    type: number
+                    desctiption: >
+                      Default: 0. Min: 0, Max: 30. Delay in seconds, this is
+                      added to any walking time determined based on the
+                      terminal.
+                    example: 10
+                  call_replacement_priority:
+                    type: string
+                    enum:
+                      - LOW
+                      - HIGH
+                    desctiption: >
+                      Values: LOW, HIGH. Default: LOW. For most call actions
+                      only one active call per user is kept. Initially
+                      autogenerated calls (e.g. direct call to home floor) are
+                      LOW. Initially manually made calls (e.g. manually selected
+                      floor from DOP) are HIGH. Keeping the values as enum
+                      allows adding new levels later, even in between.
+                    example: LOW
+                  destination:
+                    type: number
+                    description: >
+                      Destination area if given action supports destination
+                      calls or car calls
+                    example: 5000
+                  group_size:
+                    type: number
+                    description: >
+                      Default: 1. Min: 1, Max: 100. To make the call request as
+                      a group call, provide group size > 1. If requested group
+                      is larger than one lift can fit, system will still only
+                      allocate one lift.
+                    example: 1
+                  allowed­_lifts:
+                    type: array
+                    description: |
+                      Lift Decks IDS
+                    example:
+                      - 1001010
+                      - 1001110
+                required:
+                  - action
+              lift_deck:
+                type: number
+                example: 1001010
+                description: |
+                  Area Id of the lift deck that contains door
+              served_area:
+                type: number
+                example: 5000
+                description: >
+                  The area that door is leading to. The request affects the door
+                  between the two areas the lift car and the landing. Needed for
+                  hold_open callType
+              hard_time:
+                type: number
+                example: 5
+                description: >
+                  Duration for holding the doors open, in seconds. Min: 0, Max:
+                  10. Needed for hold_open callType
+              session_id:
+                type: number
+                example: 5
+                description: >
+                  Session Id from the the original call response. Removes the
+                  call from the system if possible
+              soft_time:
+                type: number
+                example: 15
+                description: >
+                  Min: 0, Max: 30. The soft_time ends automatically by door
+                  sensor if anyone passes through, whereas hard_time keeps doors
+                  always open for full duration. Needed for hold_open callType
+          buildingId:
+            type: string
+            example: building:99900009301
+            description: |
+              Unique identifier for the building. Format:
+              * building:${buildingId}
+        required:
+          - type
+          - groupId
+          - payload
+          - callType
+          - buildingId
+    monitor-call:
+      description: |
+        description about monitor-call 
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            enum:
+              - site-monitoring
+            example: site-monitoring
+            description: |
+              description about site-monitoring
+          buildingId:
+            type: string
+            example: building:99900009301
+            description: |
+              Unique identifier for the building. Format:
+              * building:${buildingId}
+          callType:
+            type: string
+            enum:
+              - monitor
+            example: monitor
+            description: |
+              description about callType
+          groupId:
+            type: string
+            example: '1'
+            description: |
+              description about group id
+          payload:
+            type: object
+            properties:
+              sub:
+                type: string
+                example: SmartOfficeLift-South
+                description: |
+                  description about sub
+              duration:
+                type: number
+                example: 300
+                description: |
+                  description about duration
+              subtopics:
+                type: string
+                example:
+                  - call_state/+/+
+                description: |
+                  description about subtopics
+        required:
+          - type
+          - buildingId
+          - callType
+          - payload
+    common-api:
+      description: >
+        Common api type supports mainly 3 call types 
+
+        Config: Building configuration such as floors, areas etc. can be fetched
+        using config call type. Config can be fetched once and on-demand as it
+        is very less likely to change.
+
+        Ping: Simple ping API that doesnt affect the system in any way, but can
+        be used to check that API is still alive and responsive. Also allows
+        client to figure out network delay and difference in system clocks,
+        which will be very helpful to sync the real time movement. call type
+
+        Actions: List of action supported by the group controller. Actions can
+        be fetched once and on-demand as it is very less likely to change.
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            enum:
+              - common-api
+            example: common-api
+            description: >
+              Common commands to get the building configuration, get actions
+              supported by a building and ping building to check if it is online
+          buildingId:
+            type: string
+            example: building:99900009301
+            description: |
+              Unique identifier for the building. Format:
+              * building:${buildingId}
+          callType:
+            type: string
+            enum:
+              - config
+              - actions
+              - ping
+            example: config
+            description: call type indicates if the request is config, actions or ping
+          groupId:
+            type: string
+            example: '1'
+            description: |
+              Unique identifier for the building
+          payload:
+            type: object
+            properties:
+              request_id:
+                type: number
+                description: >
+                  Needed only for ping command. Unique request ID to pair
+                  response to correct request
+    site-monitoring:
+      description: >
+        Site monitoring events contain the real time information about the lift
+        status, call state, deck position, door state etc. Clients can subscribe
+        to the interested events using the specific topic for each event. A
+        topic describes the type of the event and allows to mention specific
+        states.
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            enum:
+              - site-monitoring
+            example: site-monitoring
+            description: >
+              Site monitoring events contain the real time information about the
+              lift status, call state, deck position, door state etc. Clients
+              can subscribe to the interested events using the specific topic
+              for each event. A topic describes the type of the event and allows
+              to mention specific states.
+          buildingId:
+            type: string
+            example: building:99900009301
+            description: |
+              Unique identifier for the building. Format:
+              * building:${buildingId}
+          callType:
+            type: string
+            enum:
+              - monitor
+            example: monitor
+          groupId:
+            type: string
+            example: '1'
+            description: |
+              Unique identifier for the building
+          payload:
+            type: object
+            properties:
+              sub:
+                type: string
+                description: >
+                  Unqiue identifier for the subscriber. ClientID can also be
+                  used here
+                example: 123abc456def
+              duration:
+                type: number
+                description: >
+                  Duration of the subscription in seconds. Min: 0 Max: 300s
+                  Default: 300. Subscriber has to re-activate the topic before
+                  this time runs out.
+                example: 100
+              subtopics:
+                type: array
+                description: |
+                  List of topics to subscribe
+                example:
+                  - call_state/123/fixed
+    monitor-lift-status:
+      description: >
+        Occurs when there is an update in the lift status such as deck area,
+        lift mode and if there is any fault active etc.
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          time:
+            type: string
+            description: |
+              ISO 8601 time string.
+            example: '2022-03-28T08:17:09.163Z'
+          fault_active:
+            type: boolean
+          lift_mode:
+            type: integer
+            description: >
+              Current lift mode to know if the lift is in normal operating mode
+              or service mode etc. -1 indicates lift is in out of service
+            example: 12
+          nominal_speed:
+            type: number
+            description: |
+              Lift drive nominal speed m/s
+            example: 6
+          decks:
+            type: array
+            items:
+              - type: object
+                properties:
+                  area:
+                    type: integer
+                    description: |
+                      Area id of the deck
+                    example: 10010
+                  alarm:
+                    type: boolean
+                    description: |
+                      Alarm pressed status in the lift
+                    example: false
+                required:
+                  - area
+            required:
+              - time
+              - decks
+    monitor-lift-position:
+      description: |
+        description about lift-call 
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          time:
+            type: string
+          dir:
+            type: string
+          coll:
+            type: string
+          moving_state:
+            type: string
+          area:
+            type: integer
+          cur:
+            type: integer
+          adv:
+            type: integer
+          door:
+            type: boolean
+        required:
+          - time
+          - dir
+          - coll
+          - moving_state
+          - area
+          - cur
+          - adv
+          - door
+    monitor-next-stop-eta:
+      description: >
+        Occurs whenever (1) lift starts to move towards a next stop and when
+        (2) 
+
+        next stop gets changed during the travel. Main purpose for this event
+        is 
+
+        to allow UI applications to animate current lift position as smooth 
+
+        animation between two floors with perfect timing, rather than nudging
+        the 
+
+        lift car one whole floor at a time, requiring separate state-events for 
+
+        each update, and suffering from delivery lag. Essentially, for UI
+        purposes 
+
+        this event should be much better than Lift deck position. 
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          time:
+            type: string
+            description: |
+              ISO formatted timestamp of the message
+            example: 2022-03-28T08:17:09.163Z
+          eta:
+            type: string
+            description: |
+              Estimated time of arrival. ISO formatted timestamp
+            example: 2022-03-28T08:17:10.163Z
+          last_start_time:
+            type: string
+            description: |
+              Last start time. ISO formatted timestamp
+            example: 2022-03-28T08:17:10.012Z
+          decks:
+            type: object
+            properties:
+              area:
+                type: number
+                description: |
+                  Area id of the deck
+                example: 10001010
+              next_stop:
+                type: number
+                description: |
+                  Group floor Id of next stop
+                example: 6
+              current_position:
+                type: number
+                description: |
+                  Group floor Id of current position
+                example: 28
+              last_start_position:
+                type: number
+                description: |
+                  Last start position. Group floor id
+                example: 31
+              load_percentage:
+                type: number
+                description: |
+                  Percentage of load. 100 if fully occupied
+                example: 40
+            required:
+              - area
+              - next_stop
+              - current_position
+        required:
+          - time
+          - eta
+          - last_start_time
+          - deck
+    monitor-deck-position:
+      description: >
+        Occurs whenever if any of the deck states direction, moving state, area,
+        current floor, advanced etc
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          time:
+            type: string
+            description: |
+              ISO formatted timestamp of the message
+            example: 2022-03-28T08:17:09.163Z
+          dir:
+            type: string
+            description: |
+              Moving direction of lift deck
+            enum:
+              - UP
+              - DOWN
+            example: UP
+          coll:
+            type: string
+            description: |
+              Lift collective direction
+            example: DOWN
+            enum:
+              - UP
+              - DOWN
+          moving_state:
+            type: string
+            description: |
+              Moving state of the lift deck
+            example: STANDING
+            enum:
+              - STOPPED
+              - STANDING
+              - STARTING
+              - MOVING
+              - DECELERATING
+          area:
+            type: number
+            description: |
+              Area id of the lift deck
+            example: 1001010
+          cur:
+            type: number
+            description: |
+              Current floor id
+            example: 12
+          adv:
+            type: number
+            description: |
+              Advanced floor id 
+            example: 14
+          door:
+            type: boolean
+            description: |
+              Indicates if the lift deck is at landing door zone
+            example: false
+        required:
+          - time
+          - dir
+          - coll
+          - moving_state
+          - area
+          - cur
+          - adv
+    monitor-lift-stopping:
+      description: >
+        Published when lift starts slowing down to a stop where at least one of
+        the doors opens. Only the doors that will open are published. Only the
+        decks that have some opening doors will be published.
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          time:
+            type: string
+            description: |
+              ISO formatted timestamp of the message
+            example: 2022-03-28T08:17:09.163Z
+          decks:
+            type: object
+            properties:
+              area:
+                type: number
+                description: |
+                  Area Id of the deck
+                example: 1001010
+              doors:
+                type: array
+                items:
+                  - type: object
+                    landing:
+                      type: number
+                      description: |
+                        Area Id of the landing door that opens to
+                      example: 5010
+                    lift_side:
+                      type: number
+                      description: |
+                        Lift side of the door
+                      example: 1
+                    inbound:
+                      type: array
+                      items:
+                        - type: number
+                      description: >
+                        Session IDs of calls for passengers coming into car on
+                        the lift stop
+
+                        example: [24386, 24387]
+                    outbound:
+                      type: array
+                      items:
+                        - type: number
+                      description: >
+                        Session IDs of calls for passengers exiting from the car
+                        on the lift stop
+                      example:
+                        - 86867
+            required:
+              - area
+              - doors
+        required:
+          - time
+          - decks
+    monitor-door-state:
+      description: |
+        Published whenever a door state changes. On an lift with multiple decks 
+        and multiple doors, separate events are triggered for each
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          time:
+            type: string
+            description: |
+              ISO formatted timestamp of the message
+            example: 2022-03-28T08:17:09.163Z
+          area:
+            type: number
+            description: |
+              Area Id of the deck
+            example: 1001010
+          landing:
+            type: number
+            description: |
+              Area Id of the landing door leads to if any
+            example: 5010
+          lift_side:
+            type: number
+            description: |
+              lift side of the door
+            example: 1
+          state:
+            type: string
+            description: |
+              lift door state
+            example: CLOSED
+            enums:
+              - STOPPED
+              - OPENING
+              - OPENED
+              - CLOSING
+              - CLOSED
+              - NUDGING
+              - ERROR
+        required:
+          - time
+          - area
+          - lift_side
+          - state
+    monitor-call-state:
+      description: |
+        Occurs when the call state is changed for Destination, Landing and Car 
+        calls.
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          time:
+            type: string
+            description: |
+              ISO formatted timestamp of the message
+            example: 2022-03-28T08:17:09.163Z
+            enum:
+              - time
+          decks:
+            type: object
+            properties:
+              area:
+                type: number
+                description: |
+                  Area of the the deck
+                enum:
+                  - area
+                example: 1001010
+              user_id:
+                type: string
+                description: |
+                  User Id in hex string provided by Access Control system
+                enum:
+                  - user_id
+                example: ab1376ef
+              allocated_lift_deck:
+                type: array
+                enum:
+                  - allocated_lift_deck
+                items:
+                  - type: number
+                    example: 1001010
+              eta:
+                type: string
+                enum:
+                  - eta
+                description: >
+                  Estimated time of Arrival of the lift arriving at the source
+                  floor of this call. This ETA is not accurate, it may increase
+                  by a lot, causing this event to be published again. As such,
+                  displaying any ETA as a number is very unreliable, but the
+                  data can be used in progress bars etc. This field is only
+                  included for states up to fixed. At that stage, the ETA is
+                  also final and will no longer change.
+
+                  example: 2022-03-28T08:17:10.163Z
+              cancel_reason:
+                type: string
+                enum:
+                  - cancel_reason
+                description: |
+                  Reason for cancellation if any
+                example: no lifts are available
+              subgroup_id:
+                type: number
+                enum:
+                  - subgroup_id
+                description: |
+                  Default 1, if state is being assigned
+                example: 1
+              modified_destination:
+                type: number
+                enum:
+                  - modified_destination
+                description: >
+                  If for some reason the destination area is changed, new
+                  destination is given to user. This happens with all transfer
+                  calls
+                example: 15010
+    monitor-action:
+      description: >
+        Event happens when an action is performed on a specific area and
+        terminal. For e.g to understand if an API call is made to a specific
+        source or destination
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        properties:
+          time:
+            type: string
+            description: |
+              ISO 8601 time string.
+            example: '2022-03-28T08:17:09.163Z'
+          area:
+            type: number
+            description: |
+              Area id where the call was made, if any
+            example: 3000
+          terminal:
+            type: number
+            description: |
+              Terminal ID where the action is made at
+            example: 1
+          user_id:
+            type: string
+            description: |
+              User Id in hex string provided by Access Control system
+            example: ab1376ef
+          call:
+            type: object
+            properties:
+              session_id:
+                type: number
+                description: >
+                  Session Id from the the original call response. Removes the
+                  call from the system if possible
+                example: 24387
+              action:
+                type: number
+                description: |
+                  Action Id for landing calls, destination calls and car calls
+                example: 22
+              destination:
+                type: number
+                description: >
+                  Destination area if given action supports destination calls or
+                  car calls
+                example: 7000
+              group_size:
+                type: number
+                description: |
+                  Default group size 1
+                example: 1
+            required:
+              - session_id
+              - action
+          success:
+            type: boolean
+            description: |
+              Result of the call request
+            example: true
+          error:
+            type: string
+            description: |
+              Error enum if the call is not successful
+          origin:
+            type: string
+            description: |
+              Origin, from where the action originated. Device, API etc
+            example: DEVICE
+          modified_area:
+            type: number
+            description: >
+              If for some reason the source area is changed, new source is given
+              to user. This can only happen with very special features, so no
+              regular client needs to worry about it or be prepared for such
+              thing to ever happen.
+            example: 10000
+          modified_destination:
+            type: number
+            description: >
+              If for some reason the destination area is changed, new
+              destination is given to user. This happens with all transfer calls
+            example: 15010
+          modified_reason:
+            type: string
+            desctiption: >
+              If destination has been modified due to manual transfer, user
+              should exit at modified destination and make a new call there. If
+              transfer is automatic, there will be an event posted in 4.10
+              AutoTransfer, with second session_id and ID of the group serving
+              this transferred call. So user should exit the lift, then follow
+              the second allocation to their next lift for next part of
+              journey. 
+            example: AutomaticTransfer
+        required:
+          - time
+          - terminal
+          - call
+          - success
+          - origin
+  securitySchemes:
+    supportedOauthFlows:
+      type: oauth2
+      description: Flows to support OAuth 2.0
+      flows:
+        clientCredentials:
+          tokenUrl: https://dev.kone.com/api/v2/oauth2/token
+          scopes:
+            callgiving/${buildingId}: >-
+              Gains access to the topology of the explicitly defined building
+              and to open a websocket with the ability to give 'normal' type
+              destination and landing calls, including monitoring of the state
+              of the call made, allocated lift deck, allocated lift deck's doors
+              and ETA-information (upcoming). Can be scoped to a specific group
+              within the building or the full building.
+            robotcall/${buildingId}: >-
+              As callgiving, but only for 'robot' type calls with the associated
+              extra params.
+            application/inventory: >-
+              Allows retrieving the list of resources accessible by the
+              application.
+  messageTraits:
+    commonHeaders:
+      headers:
+        type: object
+        properties:
+          Authorization:
+            type: string
+            description: >-
+              JWT Bearer token as obtained from
+              https://dev.kone.com/api/v2/oauth2/token endpoint

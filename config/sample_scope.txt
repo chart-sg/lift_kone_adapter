@@ -1,0 +1,12 @@
+ 'scope': 'call/group:HxKjGc3knnh:1 topology/group:HxKjGc3knnh:1 '
+          'robot/group:HxKjGc3knnh:1 call/group:L1QinntdEOg:1 '
+          'topology/group:L1QinntdEOg:1 robot/group:L1QinntdEOg:1 '
+          'call/building:4TFxWRCv23D topology/building:4TFxWRCv23D '
+          'robot/building:4TFxWRCv23D call/building:fWlfHyPlaca '
+          'topology/building:fWlfHyPlaca robot/building:fWlfHyPlaca '
+          'call/building:L1QinntdEOg topology/building:L1QinntdEOg '
+          'robot/building:L1QinntdEOg call/group:fWlfHyPlaca:1 '
+          'topology/group:fWlfHyPlaca:1 robot/group:fWlfHyPlaca:1 '
+          'call/group:4TFxWRCv23D:1 topology/group:4TFxWRCv23D:1 '
+          'robot/group:4TFxWRCv23D:1 call/building:HxKjGc3knnh '
+          'topology/building:HxKjGc3knnh robot/building:HxKjGc3knnh',
