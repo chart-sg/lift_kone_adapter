@@ -18,20 +18,22 @@ import os
 import rclpy
 import rclpy.node
 
+import yaml
+
 class koneAdaptor:
-    def __init__(self, access_id, access_secret, building_ID):
+    def __init__(self, config_yaml : yaml):
        
         ######################################
         #######--Parameter Setting---#########
         ######################################
 
-        self.baseURL = "https://dev.kone.com"
-        self.auth_server_url = "https://dev.kone.com/api/v2/oauth2/token"
-        self.requestHeaders = {"Content-Type": "application/x-www-form-urlencoded"}
+        self.baseURL = config_yaml['baseURL']
+        self.auth_server_url =  config_yaml['auth_server_url']
+        self.requestHeaders = config_yaml['requestHeaders']
         self.subproto = ["koneapi"]
 
         # sandbox lift
-        self.token_req_payload = {"grant_type": "client_credentials", "scope": "robotcall/* application/inventory", }
+        self.token_req_payload = config_yaml['token_req_payload']
         
         # manually set AreaID:Floor mapping (used in [landing] info from liftstate websocket)
         self.areaLevelDict = {
@@ -57,9 +59,9 @@ class koneAdaptor:
 
 
         self.connectionURL = str
-        self.client_id = access_id
-        self.client_secret = access_secret
-        self.buildingID = building_ID
+        self.client_id = config_yaml['access_id']
+        self.client_secret = config_yaml['access_secret']
+        self.buildingID = config_yaml['buildingId']
         self.token_response = None
         # note the square bracket for WebSocketApp purposes
         

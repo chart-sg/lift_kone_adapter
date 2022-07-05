@@ -11,7 +11,7 @@ setup(
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
-        (os.path.join("share", package_name, "launch"), glob("launch/*launch.py")),
+        # (os.path.join("share", package_name, "launch"), glob("launch/*launch.py")),
         (os.path.join("share", package_name, "config"), glob("config/*.yaml")),
     ],
     install_requires=["setuptools"],
@@ -23,8 +23,8 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            # "koneNode = kone_ros_api.koneNode:main",
-            "koneAdaptor = kone_ros_api.koneAdaptor:main",
+            "koneAdaptor_v2 = kone_ros_api.koneAdaptor_v2:main",
+            "koneNode_v2 = kone_ros_api.koneNode_v2:main",
         ],
     },
 )

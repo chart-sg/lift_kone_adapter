@@ -7,7 +7,7 @@ import sys
 from rclpy.node import Node
 from rclpy.executors import ExternalShutdownException
 
-from koneAdaptor.koneAdaptor_v2 import koneAdaptor
+from kone_ros_api.koneAdaptor_v2 import koneAdaptor
 from rmf_lift_msgs.msg import LiftState, LiftRequest
 from rmf_fleet_msgs.msg import FleetState, RobotState, Location
 
@@ -16,16 +16,17 @@ from threading import Thread
 from pprint import pprint
 import datetime
 
+import yaml, os
+from ament_index_python.packages import get_package_share_directory
+
 
 class LiftNode(Node):
     def __init__(self, lift_name):
         self.node_name = f"{lift_name}_lift_node"
         super().__init__(self.node_name)
 
-        #sandbox 
-        self.clientID = '160fd5a3-2010-4348-8aec-644bb100bb93'
-        self.clientSecret = '592a91ee0c89005933d6cef74ff0bb66cd9953d5f19c4e57d4ea6b6e7810c4c3'
-        self.buildingID = "building:HxKjGc3knnh" 
+        # Get config from yaml
+        self.config_yaml = self.get_config()
 
         self.prev_fleet_robot_level_dict = None
         self.fleet_robot_level_dict = None
@@ -38,7 +39,7 @@ class LiftNode(Node):
         self.prev_rmf_lift_request.append(LiftRequest)
 
 
-        self.koneAdaptorGalen = koneAdaptor(self.clientID, self.clientSecret, self.buildingID)
+        self.koneAdaptorGalen = koneAdaptor(self.config_yaml)
 
         self.lift_state_pub = self.create_publisher(LiftState, "lift_states", 10)
  
@@ -57,6 +58,20 @@ class LiftNode(Node):
         threadKoneLiftstateWS.daemon = True
         threadKoneLiftstateWS.start()
 
+
+    def get_config(self):
+        env_config = os.path.join(
+            get_package_share_directory("kone_ros_api"), "config", "env.yaml"
+        )
+        with open(env_config, "r") as stream:
+            try:
+                parsed_yaml = yaml.safe_load(stream)
+                # print(parsed_yaml)
+                self.get_logger().info("Succcess reading env.yaml")
+            except yaml.YAMLError as exc:
+                # print(exc)
+                self.get_logger().info("Failure reading env.yaml")
+            return parsed_yaml
 
 
     def reset_liftstate_ws_CallBack(self):
