@@ -281,18 +281,23 @@ class koneAdaptor:
 
     def onSocketMsg(self, message):
         msg = json.loads(message)
-        print("\nreceived message: ")
-        pprint(msg)
+        # print("\nreceived message: ")
+        # pprint(msg)
         try:
             typeOfMsg = msg["statusCode"]
         except:
             typeOfMsg = msg["data"]["success"]
         if typeOfMsg == True:
             print ("Sent lift command successfully.")
+            self.closeSocketMsg(0)
+        elif typeOfMsg == False:
+            print ("Got error in sending lift command.")
+            pprint(msg)
+            self.closeSocketMsg(0)
         elif typeOfMsg == 201:
             print ("Received lift command ack.")
-        else:
-            self.closeSocketMsg(0)
+        
+            
 
     def decodeLiftConfigMsg(self, msg):
         lift_group_selected = 0 # to get the first lift group
