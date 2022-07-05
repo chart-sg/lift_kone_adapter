@@ -37,7 +37,7 @@ class LiftNode(Node):
         self.prev_rmf_lift_request = []
         for i in range (len(self.koneAdaptorGalen.liftNameList)):
             self.prev_rmf_lift_request.append(LiftRequest)
-            
+
 
         self.lift_state_pub = self.create_publisher(LiftState, "lift_states", 10)
  
@@ -143,6 +143,7 @@ class LiftNode(Node):
             )
             
             self.koneAdaptorGalen.liftDestinationCall(current_source_floor, current_dest_floor, msg.lift_name)
+            # self.koneAdaptorGalen.liftLandingCall(current_dest_floor, msg.lift_name)
 
             # Update prev_rmf_lift_request to latest request
             self.prev_rmf_lift_request[current_lift_index] = msg

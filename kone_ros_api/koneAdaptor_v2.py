@@ -66,6 +66,7 @@ class koneAdaptor:
         self.areaLevelDict = {}
         self.liftnameliftDeckDict = {}
         self.BuildingAvailableFloor = []
+        self.liftTerminalList = []
 
 
         self.ws = None
@@ -280,8 +281,8 @@ class koneAdaptor:
 
     def onSocketMsg(self, message):
         msg = json.loads(message)
-        # print("\nreceived message: ")
-        # pprint(msg)
+        print("\nreceived message: ")
+        pprint(msg)
         try:
             typeOfMsg = msg["statusCode"]
         except:
@@ -290,6 +291,7 @@ class koneAdaptor:
             print ("Sent lift command successfully.")
         elif typeOfMsg == 201:
             print ("Received lift command ack.")
+        else:
             self.closeSocketMsg(0)
 
     def decodeLiftConfigMsg(self, msg):
@@ -301,6 +303,12 @@ class koneAdaptor:
         except:
             print ("Error in getting group with group index: " + str(lift_group_selected))
 
+        # getting lift terminal info
+        try:
+              self.liftTerminalList = responseinDict["groups"][lift_group_selected]["terminals"]
+        except:
+            print ("Error in getting lifts terminal list.")
+
         # getting lifts name, lift id, lift deck
         try:
             for lift in responseinDict["groups"][lift_group_selected]["lifts"]:
@@ -310,6 +318,7 @@ class koneAdaptor:
                 self.liftnameliftDeckDict[lift["lift_name"]] = lift["decks"][0]["area_id"]
         except:
             print ("Error in getting lifts name, lift id, lift deck.")
+
 
         # getting area id 
         try:
@@ -347,6 +356,8 @@ class koneAdaptor:
         print ("areaLevelDict: " + str(self.areaLevelDict))
         print ("liftnameliftDeckDict: " + str(self.liftnameliftDeckDict))
         print ("Liftstate monitoring Topic List: " + str(self.liftstate_monitoring_topic_list))
+        print ("Lift Terminal List: " + str(self.liftTerminalList))
+
         print('\n')
 
 
@@ -485,7 +496,7 @@ class koneAdaptor:
                 "request_id": 1,
                 "area": current_source_floor_areaID,
                 "time": datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
-                "terminal": 1,
+                "terminal": self.liftTerminalList[0],
                 "call": { 
                     "action": 2, 
                     "destination": current_dest_areaID,
@@ -537,7 +548,7 @@ class koneAdaptor:
                 "request_id": 1,
                 "area": source_floor_areaID,
                 "time": datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
-                "terminal": 1,
+                "terminal": self.liftTerminalList[0],
                 "call": { 
                     "action": 2, 
                     "allowed_lifts": [lift_selected]
