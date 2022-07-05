@@ -24,6 +24,8 @@ setup(
     entry_points={
         "console_scripts": [
             # "koneNode = kone_ros_api.koneNode:main",
+            "koneAdaptor_v2 = kone_ros_api.koneAdaptor_v2:main",
+            "koneNode_v2 = kone_ros_api.koneNode_v2:main",
             "koneAdaptor = kone_ros_api.koneAdaptor:main",
         ],
     },
