@@ -31,14 +31,13 @@ class LiftNode(Node):
         self.prev_fleet_robot_level_dict = None
         self.fleet_robot_level_dict = None
 
-        # Var for storing previous session, currently is manually init, *TODO get from building topo
-        self.prev_rmf_lift_request = []
-        self.prev_rmf_lift_request.append(LiftRequest)
-        self.prev_rmf_lift_request.append(LiftRequest)
-        self.prev_rmf_lift_request.append(LiftRequest)
-
-
         self.koneAdaptorGalen = koneAdaptor(self.config_yaml)
+
+        # Var for storing previous session
+        self.prev_rmf_lift_request = []
+        for i in range (len(self.koneAdaptorGalen.liftNameList)):
+            self.prev_rmf_lift_request.append(LiftRequest)
+            
 
         self.lift_state_pub = self.create_publisher(LiftState, "lift_states", 10)
  
