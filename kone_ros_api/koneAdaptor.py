@@ -13,8 +13,7 @@ import rclpy.node
 import os
 from ament_index_python.packages import get_package_share_directory
 
-import websocket
-
+import websockets, asyncio
 
 class koneAdaptor(rclpy.node.Node):
     def __init__(self):
@@ -38,11 +37,11 @@ class koneAdaptor(rclpy.node.Node):
             return
         print("Got access token from Kone API server")
         self.access_key = json.loads(self.token_response.content)
-        # pprint(access_key)
+        pprint(self.access_key)
 
         # Serialize base json message
 
-        payload = {
+        self.payload = {
             "type": "site-monitoring",
             "requestId": "1234",
             "buildingId": "building:4TFxWRCv23D",
@@ -55,22 +54,34 @@ class koneAdaptor(rclpy.node.Node):
             },
         }
         self.get_logger().info(
-            "sending lift command with the following payload...%s" % payload
+            "sending lift command with the following payload...%s" % self.payload
         )
-        self.ws = websocket.WebSocketApp(
-            url=self.parsed_yaml["ws_url"] + self.access_key["access_token"],
-            subprotocols=["koneapi"],
-            on_message=lambda ws, msg: self.onSocketMsg(msg),
-            on_error=lambda ws, msg: self.onSocketError(msg),
-            on_open=lambda ws: self.sendCommandviaSocket(payload),
-            on_close=lambda ws, closeCode, closeMsg: self.closeSocketMsg(
-                closeCode, closeMsg
-            ),
-        )
-        self.ws.run_forever()
+
+        async def hello():
+            uri = self.parsed_yaml["ws_url"] + self.access_key["access_token"]
+            async with websockets.connect(uri= uri, subprotocols=["koneapi"]) as websocket:
+                await websocket.send(json.dumps(self.payload))
+                # print(f">>> {name}")
+
+                greeting = await websocket.recv()
+                print(f"<<< {greeting}")
+
+        asyncio.run(hello())
+
+        # self.ws = websocket.WebSocketApp(
+        #     url=self.parsed_yaml["ws_url"] + self.access_key["access_token"],
+        #     subprotocols=["koneapi"],
+        #     on_message=lambda ws, msg: self.onSocketMsg(msg),
+        #     on_error=lambda ws, msg: self.onSocketError(msg),
+        #     on_open=lambda ws: self.sendCommandviaSocket(self.payload),
+        #     on_close=lambda ws, closeCode, closeMsg: self.closeSocketMsg(
+        #         closeCode, closeMsg
+        #     ),
+        # )
+        # self.ws.run_forever()
 
     def timer_callback(self):
-
+        # self.ws.send(self.payload)
         self.get_logger().info("Running")  #% my_param)
 
     def get_config(self):
@@ -120,41 +131,66 @@ class koneAdaptor(rclpy.node.Node):
         #     self.get_logger().info("Current lift motion is %s" % self.motionState)
 
 
-def make_elevator_call():
-    pass
+    def make_elevator_call():
+        pass
 
 
-def hold_car_door_open():
-    pass
+    def hold_car_door_open():
+        pass
 
 
-def cancel_elevator_call():
-    pass
+    def cancel_elevator_call():
+        pass
 
 
-def site_monitoring():
-    payload = {
-        "type": "site-monitoring",
-        "requestId": "01841d1c-f4ba-4f9c-a348-6f679bfae86e",
-        "buildingId": "targetBuildingId",
-        "callType": "monitor",
-        "groupId": "1",
-        "payload": {
-            "sub": "smartOfficeLiftSouthWing_user123",
-            "duration": 300,
-            "subtopics": ["call_state/123/fixed"],
-        },
-    }
+    def site_monitoring():
+        payload = {
+            "type": "site-monitoring",
+            "requestId": "01841d1c-f4ba-4f9c-a348-6f679bfae86e",
+            "buildingId": "targetBuildingId",
+            "callType": "monitor",
+            "groupId": "1",
+            "payload": {
+                "sub": "smartOfficeLiftSouthWing_user123",
+                "duration": 300,
+                "subtopics": ["call_state/123/fixed"],
+            },
+        }
 
-    pass
-
-
-def common_commands():
-    pass
+        pass
 
 
-def monitoring_events():
-    pass
+    def common_commands():
+        pass
+
+
+    def monitoring_events():
+        pass
+
+
+    # def openLiftStateWS(self):
+    #     print ("\nOpen liftstate websocket.")
+    #     self.last_active_timestamp_for_liftstate_ws = time.time()
+
+    #     payload = {"type": "site-monitoring",
+    #         "requestId": "1",
+    #         "buildingId": self.buildingID,
+    #         "callType": "monitor",
+    #         "groupId": "1",
+    #         "payload": {"sub": "get_lift_state", 
+    #                     "duration": 300, 
+    #                     "subtopics": self.liftstate_monitoring_topic_list
+    #                     },
+    #         }
+
+    #     self.ws_state = websocket.WebSocketApp(
+    #         url=self.connectionURL,
+    #         subprotocols=self.subproto,
+    #         on_message=lambda ws_state, msg: self.onSocketMsg_liftstate(msg),
+    #         on_error=lambda ws_state, msg: self.onSocketError(msg),
+    #         on_open=lambda ws_state: self.sendCommandviaSocket_state(payload),
+    #         on_close=lambda ws_state, closeCode, closeMsg: self.closeSocketMsg_state(closeCode),
+    #     )
 
 
 def main():
