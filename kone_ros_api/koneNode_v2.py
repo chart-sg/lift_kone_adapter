@@ -77,8 +77,9 @@ class LiftNode(Node):
         current_timestamp = time.time()
         last_active_timestamp = self.koneAdaptorGalen.last_active_timestamp_for_liftstate_ws
         time_elapsed_since_last_ws_active = current_timestamp - last_active_timestamp
-        # print ("time_elapsed_since_last_ws_active: " + str(time_elapsed_since_last_ws_active))
+        
         if (time_elapsed_since_last_ws_active >= 55.0):
+            print ("time_elapsed_since_last_ws_active: " + str(time_elapsed_since_last_ws_active))
             self.reset_liftstate_ws = True
             self.koneAdaptorGalen.closeSocketMsg_state(0)
 

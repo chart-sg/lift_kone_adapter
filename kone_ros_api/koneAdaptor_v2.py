@@ -474,8 +474,8 @@ class koneAdaptor:
             doorState = 2
         elif raw_doorState == "CLOSED":
             doorState = 0
-        elif raw_doorState == "OPENING":
-            doorState = 1
+        elif raw_doorState == "OPENING":    # set OPENING to OPENED state because the state feeback is still OPENING even the door is already opened
+            doorState = 2
         elif raw_doorState == "CLOSING":
             doorState = 0   # put 0 here because sometime will receive a CLOSING even after door CLOSED from websocket 
         return doorState
