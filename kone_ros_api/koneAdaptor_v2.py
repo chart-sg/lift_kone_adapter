@@ -86,21 +86,6 @@ class koneAdaptor:
         self.initCurrentLiftstateList()
 
 
-    # def get_config(self):
-    #     config = os.path.join(
-    #         get_package_share_directory("koneAdaptor"), "config", "env.yaml"
-    #     )
-    #     with open(config, "r") as stream:
-    #         try:
-    #             parsed_yaml = yaml.safe_load(stream)
-    #             # print(parsed_yaml)
-    #             self.get_logger().info("Succcess reading env.yaml")
-    #         except yaml.YAMLError as exc:
-    #             # print(exc)
-    #             self.get_logger().info("Failure reading env.yaml")
-    #         return parsed_yaml
-
-
     def initCurrentLiftstateList(self):
         for i in range (len(self.liftNameList)):
             self.current_liftstate_list.append(LiftState())
@@ -191,32 +176,6 @@ class koneAdaptor:
         pprint(responseinDict)
         print('\n')
 
-    def getBuildingConfig(self):
-        self.token_response = requests.post(
-            self.auth_server_url,
-            data=self.token_req_payload,
-            allow_redirects=False,
-            headers=self.requestHeaders,
-            auth=(self.client_id, self.client_secret),
-        )
-        responseInDict = json.loads(self.token_response.content)
-        self.sessionToken = responseInDict['access_token']
-        self.scopeOfAccess = responseInDict['scope']
-        print ("\naccess_token: ")
-        pprint(self.sessionToken)
-        print ("\nscope: ")
-        pprint(self.scopeOfAccess)
-
-        payload = {"type": "common-api",
-            "requestId": "1",
-            "buildingId": "building:PZFtaS27eW",
-            "callType": "config",
-            "groupId": "1",
-            }
-
-        self.sendLiftCommand(payload)
-        self.runSocketTilComplete()
-
     def sendLiftCommand(self, payload):
         print("sending lift command with the following payload %s" % payload)
         self.ws = websocket.WebSocketApp(
@@ -299,7 +258,6 @@ class koneAdaptor:
             print ("Received lift command ack.")
         
             
-
     def decodeLiftConfigMsg(self, msg):
         lift_group_selected = 0 # to get the first lift group
 
@@ -585,7 +543,7 @@ def main():
     galenAdaptor = koneAdaptor(clientID, clientSecret, buildingId)
     # galenAdaptor.getResource()
     # galenAdaptor.getUserInfo()
-    # galenAdaptor.getBuildingConfig()
+
 
     #real lift
     # payload = {"type": "site-monitoring",
