@@ -73,13 +73,17 @@ class LiftNode(Node):
 
 
     def reset_liftstate_ws_CallBack(self):
-        # check if liftstate websocket is inactive for more than 59s, then restart it
+        # check if liftstate websocket is inactive for more than 59s or ws opened for more than 300s, then restart it
+        # max kone liftstate ws subscription duration is 300s (for kone api v2)
         current_timestamp = time.time()
         last_active_timestamp = self.koneAdaptorGalen.last_active_timestamp_for_liftstate_ws
+        last_opened_timestamp = self.koneAdaptorGalen.last_active_timestamp_for_liftstate_ws_open
         time_elapsed_since_last_ws_active = current_timestamp - last_active_timestamp
+        time_elapsed_since_last_ws_opened = current_timestamp - last_opened_timestamp
         
-        if (time_elapsed_since_last_ws_active >= 55.0):
+        if (time_elapsed_since_last_ws_active >= 55.0 or time_elapsed_since_last_ws_opened >= 295.0):
             print ("time_elapsed_since_last_ws_active: " + str(time_elapsed_since_last_ws_active))
+            print ("time_elapsed_since_last_ws_opened: " + str(time_elapsed_since_last_ws_opened))
             self.reset_liftstate_ws = True
             self.koneAdaptorGalen.closeSocketMsg_state(0)
 

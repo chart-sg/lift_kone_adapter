@@ -76,6 +76,7 @@ class koneAdaptor:
         
         self.current_liftstate_list = []
         self.last_active_timestamp_for_liftstate_ws = 0
+        self.last_active_timestamp_for_liftstate_ws_open = 0
         
 
 
@@ -229,7 +230,7 @@ class koneAdaptor:
 
     def openLiftStateWS(self):
         print ("\nOpen liftstate websocket.")
-        self.last_active_timestamp_for_liftstate_ws = time.time()
+        self.last_active_timestamp_for_liftstate_ws_open = time.time()
 
         payload = {"type": "site-monitoring",
             "requestId": "1",
