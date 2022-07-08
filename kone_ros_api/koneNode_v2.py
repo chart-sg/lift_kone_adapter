@@ -144,6 +144,7 @@ class LiftNode(Node):
         if current_dest_floor != current_source_floor:
 
             self.koneAdaptorGalen.updateDestFloor(msg.lift_name, msg.destination_floor)
+            self.koneAdaptorGalen.update_door_holding_task(msg.lift_name, msg.destination_floor)  #update this task list, so that door holding will be perform at the floor with matched liftname
 
             self.get_logger().info(
                 "Sending lift command paylod now. Lift: %s, Destination Floor: %s" %(msg.lift_name, msg.destination_floor)
@@ -157,7 +158,11 @@ class LiftNode(Node):
         
         # at destination floor but current door state is "CLOSED", and target door state is "OPEN"
         elif (current_dest_floor == current_source_floor and current_lift_door_state == 0 and msg.door_state == 2):   
+            
+            self.koneAdaptorGalen.update_door_holding_task(msg.lift_name, msg.destination_floor)  #update this task list, so that door holding will be perform at the floor with matched liftname
+
             self.get_logger().info("Sending lift command paylod now. Lift: %s , Destination floor == Current floor, opening door now." % msg.lift_name )
+            
             self.koneAdaptorGalen.liftLandingCall(current_dest_floor, msg.lift_name)
         else:
             self.get_logger().info("Lift: %s , Destination floor == Current floor, door state is matched. Skipping!" % msg.lift_name )

@@ -72,11 +72,14 @@ class koneAdaptor:
         self.ws = None
         self.ws_state = None
         self.ws_config = None
+        self.ws_dh = None
         self.listOfMessage = []
         
         self.current_liftstate_list = []
         self.last_active_timestamp_for_liftstate_ws = 0
         self.last_active_timestamp_for_liftstate_ws_open = 0
+
+        self.door_holding_task = [] # door holding floor info
         
 
 
@@ -84,7 +87,15 @@ class koneAdaptor:
         self.getToken()
         self.getLiftConfig() # getting buildingTopo for api v2
         self.initCurrentLiftstateList()
+        self.initDoorHoldingTaskList()
 
+    def update_door_holding_task(self, lift_name, destination_floor):
+        lift_index = self.liftNameList.index(lift_name)
+        self.door_holding_task[lift_index] = destination_floor
+
+    def initDoorHoldingTaskList(self):
+        for i in range (len(self.liftNameList)):
+            self.door_holding_task.append("")
 
     def initCurrentLiftstateList(self):
         for i in range (len(self.liftNameList)):
@@ -177,7 +188,7 @@ class koneAdaptor:
         print('\n')
 
     def sendLiftCommand(self, payload):
-        print("sending lift command with the following payload %s" % payload)
+        # print("sending lift command with the following payload %s" % payload)
         self.ws = websocket.WebSocketApp(
             url=self.connectionURL,
             subprotocols=self.subproto,
@@ -185,6 +196,17 @@ class koneAdaptor:
             on_error=lambda ws, msg: self.onSocketError(msg),
             on_open=lambda ws: self.sendCommandviaSocket(payload),
             on_close=lambda ws, closeCode, closeMsg: self.closeSocketMsg(closeCode),
+        )
+    
+    def sendLiftDoorHoldingCommand(self, payload):
+        # print("sending lift door holding command with the following payload %s" % payload)
+        self.ws_dh = websocket.WebSocketApp(
+            url=self.connectionURL,
+            subprotocols=self.subproto,
+            on_message=lambda ws_dh, msg: self.onSocketMsg_dh(msg),
+            on_error=lambda ws_dh, msg: self.onSocketError(msg),
+            on_open=lambda ws_dh: self.sendCommandviaSocket_dh(payload),
+            on_close=lambda ws_dh, closeCode, closeMsg: self.closeSocketMsg_dh(closeCode),
         )
 
     def openLiftStateWS(self):
@@ -221,6 +243,11 @@ class koneAdaptor:
         # print("Websocket closed session with CloseCode: ", closeCode)
         self.ws.close()
     
+    def closeSocketMsg_dh(self, closeCode):
+        # print("###################### WEBSOCKERCLOSING ########################")
+        # print("Websocket closed session with CloseCode: ", closeCode)
+        self.ws_dh.close()
+    
     def closeSocketMsg_config(self, closeCode):
         # print("Websocket liftconfig closed session with CloseCode: ", closeCode)
         self.ws_config.close()
@@ -238,6 +265,18 @@ class koneAdaptor:
             print ("\nLiftstate monitoring event in progress...\n")
         elif typeOfMsg in self.liftstate_monitoring_topic_list:
             self.updateLiftStateList(msg)
+
+    def onSocketMsg_dh(self, message):
+        msg = json.loads(message)
+        # print("\nreceived dh message: ", message)
+        try:
+            typeOfMsg = msg["statusCode"]
+            if typeOfMsg == 201:
+                print ("\nGetting door holding command ack...\n")
+                self.closeSocketMsg_dh(0)
+        except:
+            print ("Error in getting door holding command reply.")
+
 
     def onSocketMsg(self, message):
         msg = json.loads(message)
@@ -363,6 +402,10 @@ class koneAdaptor:
         print("Payload sent: ", payload)
         self.ws.send(json.dumps(payload))
     
+    def sendCommandviaSocket_dh(self, payload):
+        print("Payload sent: ", payload)
+        self.ws_dh.send(json.dumps(payload))
+    
     def sendCommandviaSocket_state(self, payload):
         print("Payload sent: ", payload)
         self.ws_state.send(json.dumps(payload))
@@ -377,6 +420,10 @@ class koneAdaptor:
 
     def runSocketTilComplete(self):
         self.ws.run_forever()
+        return False
+    
+    def runSocketTilComplete_dh(self):
+        self.ws_dh.run_forever()
         return False
 
     def runSocketTilComplete_config(self):
@@ -408,10 +455,13 @@ class koneAdaptor:
         
         # Holding door opening time
         if (cur_doorstate in [1,2]):    # door state = OPENING/OPENED
-            # self.liftDoorHoldingCall(str(cur_floor), self.current_liftstate_list[int(cur_liftname)-1].lift_name, self.door_holding_duration)
-            print("NOT Holding lift " + self.current_liftstate_list[int(cur_liftname)-1].lift_name + " door at " + str(cur_floor))
+            doorholding_floor = self.door_holding_task[int(cur_liftname)-1]
+            if (doorholding_floor != "" and cur_floor == doorholding_floor):
+                self.liftDoorHoldingCall(doorholding_floor, self.current_liftstate_list[int(cur_liftname)-1].lift_name, self.door_holding_duration)
+                print("Holding lift " + self.current_liftstate_list[int(cur_liftname)-1].lift_name + " door at " + doorholding_floor)
+                self.door_holding_task[int(cur_liftname)-1] = ""    # reset doorholding floor info
 
-        self.current_liftstate_list[int(cur_liftname)-1].current_floor = str(cur_floor)
+        self.current_liftstate_list[int(cur_liftname)-1].current_floor = cur_floor
         self.current_liftstate_list[int(cur_liftname)-1].door_state = cur_doorstate
 
         print ("Updated LiftState lift: " + self.current_liftstate_list[int(cur_liftname)-1].lift_name + ", floor: " + self.current_liftstate_list[int(cur_liftname)-1].current_floor + ", door: " + str(self.current_liftstate_list[int(cur_liftname)-1].door_state)+ ","+ msg["data"]["state"])
@@ -496,8 +546,8 @@ class koneAdaptor:
     
     def liftDoorHoldingCall(self, floor, liftname, holding_duration):
         payload = self.generatePayload_DoorHolding(floor, liftname, holding_duration)
-        self.sendLiftCommand(payload)
-        self.runSocketTilComplete()
+        self.sendLiftDoorHoldingCommand(payload)
+        self.runSocketTilComplete_dh()
 
     def generatePayload_LiftLandingCall(self, sourceLvl, liftname):
         lift_selected = self.liftnameliftDeckDict[liftname]
