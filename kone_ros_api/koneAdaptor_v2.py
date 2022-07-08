@@ -47,7 +47,8 @@ class koneAdaptor:
         self.client_id = config_yaml['access_id']
         self.client_secret = config_yaml['access_secret']
         self.buildingID = config_yaml['buildingId']
-        self.door_holding_duration = config_yaml['liftdoor_holding_duration']
+        self.door_holding_duration_hard = config_yaml['liftdoor_holding_duration_hard']
+        self.door_holding_duration_soft = config_yaml['liftdoor_holding_duration_soft']
         self.token_response = None
         # note the square bracket for WebSocketApp purposes
         
@@ -457,7 +458,7 @@ class koneAdaptor:
         if (cur_doorstate in [1,2]):    # door state = OPENING/OPENED
             doorholding_floor = self.door_holding_task[int(cur_liftname)-1]
             if (doorholding_floor != "" and cur_floor == doorholding_floor):
-                self.liftDoorHoldingCall(doorholding_floor, self.current_liftstate_list[int(cur_liftname)-1].lift_name, self.door_holding_duration)
+                self.liftDoorHoldingCall(doorholding_floor, self.current_liftstate_list[int(cur_liftname)-1].lift_name)
                 print("Holding lift " + self.current_liftstate_list[int(cur_liftname)-1].lift_name + " door at " + doorholding_floor)
                 self.door_holding_task[int(cur_liftname)-1] = ""    # reset doorholding floor info
 
@@ -525,7 +526,7 @@ class koneAdaptor:
         self.sendLiftCommand(payload)
         self.runSocketTilComplete()
 
-    def generatePayload_DoorHolding(self, floor, liftname, holding_duration):
+    def generatePayload_DoorHolding(self, floor, liftname):
         lift_selected = self.liftnameliftDeckDict[liftname]
         floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(floor))
         print ("Door holding lift: " + str(lift_selected) + "; floor: " + floor_areaID)
@@ -538,14 +539,14 @@ class koneAdaptor:
                         "time": datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
                         "lift_deck": lift_selected,
                         "served_area": floor_areaID,
-                        "hard_time": holding_duration,
-                        "soft_time": 20,
+                        "hard_time": self.door_holding_duration_hard,
+                        "soft_time": self.door_holding_duration_soft,
                     },
                 }
         return payload
     
-    def liftDoorHoldingCall(self, floor, liftname, holding_duration):
-        payload = self.generatePayload_DoorHolding(floor, liftname, holding_duration)
+    def liftDoorHoldingCall(self, floor, liftname):
+        payload = self.generatePayload_DoorHolding(floor, liftname)
         self.sendLiftDoorHoldingCommand(payload)
         self.runSocketTilComplete_dh()
 
@@ -668,7 +669,7 @@ def main():
     # galenAdaptor.sendLiftCommand(payload)
     # galenAdaptor.runSocketTilComplete()
 
-    # galenAdaptor.liftDoorHoldingCall("L3", "C", 10)
+    # galenAdaptor.liftDoorHoldingCall("L3", "C")
     #galenAdaptor.liftLandingCall("L3","D")
     # galenAdaptor.openLiftConfigWS()
     # galenAdaptor.runSocketTilComplete_config()
