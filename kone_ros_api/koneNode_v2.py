@@ -130,7 +130,7 @@ class LiftNode(Node):
         ):
             req_time_elapsed = msg.request_time.sec - self.prev_rmf_lift_request[current_lift_index].request_time.sec
             print ("req_time_elapsed: " + str(req_time_elapsed))
-            if (req_time_elapsed < 60):
+            if (req_time_elapsed < 30):
                 self.get_logger().info("Duplicated lift request. Skipping !")
                 return
 
@@ -138,8 +138,10 @@ class LiftNode(Node):
         # Thsi is a valid lift request, update the request info now
         current_dest_floor = msg.destination_floor
         current_source_floor = self.koneAdaptorGalen.current_liftstate_list[current_lift_index].current_floor
+        current_lift_door_state = self.koneAdaptorGalen.current_liftstate_list[current_lift_index].door_state
 
-        if current_dest_floor != current_source_floor :
+        # moving to destination floor
+        if current_dest_floor != current_source_floor:
 
             self.koneAdaptorGalen.updateDestFloor(msg.lift_name, msg.destination_floor)
 
@@ -147,13 +149,19 @@ class LiftNode(Node):
                 "Sending lift command paylod now. Lift: %s, Destination Floor: %s" %(msg.lift_name, msg.destination_floor)
             )
             
-            self.koneAdaptorGalen.liftDestinationCall(current_source_floor, current_dest_floor, msg.lift_name)
-            # self.koneAdaptorGalen.liftLandingCall(current_dest_floor, msg.lift_name)
+            # self.koneAdaptorGalen.liftDestinationCall(current_source_floor, current_dest_floor, msg.lift_name)
+            self.koneAdaptorGalen.liftLandingCall(current_dest_floor, msg.lift_name)
 
             # Update prev_rmf_lift_request to latest request
             self.prev_rmf_lift_request[current_lift_index] = msg
+        
+        # at destination floor but current door state is "CLOSED", and target door state is "OPEN"
+        elif (current_dest_floor == current_source_floor and current_lift_door_state == 0 and msg.door_state == 2):   
+            self.get_logger().info("Sending lift command paylod now. Lift: %s , Destination floor == Current floor, opening door now." % msg.lift_name )
+            self.koneAdaptorGalen.liftLandingCall(current_dest_floor, msg.lift_name)
         else:
-            self.get_logger().info("Lift: %s , Destination floor == Current floor. Skipping!" % msg.lift_name ) 
+            self.get_logger().info("Lift: %s , Destination floor == Current floor, door state is matched. Skipping!" % msg.lift_name )
+
 
 
 

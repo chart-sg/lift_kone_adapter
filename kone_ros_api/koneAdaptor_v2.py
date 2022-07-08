@@ -502,7 +502,7 @@ class koneAdaptor:
     def generatePayload_LiftLandingCall(self, sourceLvl, liftname):
         lift_selected = self.liftnameliftDeckDict[liftname]
         source_floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(sourceLvl))
-
+        
         payload = {
             "type": "lift-call-api-v2",
             "buildingId": self.buildingID,
@@ -514,8 +514,10 @@ class koneAdaptor:
                 "time": datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
                 "terminal": self.liftTerminalList[0],
                 "call": { 
-                    "action": 2, 
-                    "allowed_lifts": [lift_selected]
+                    "action": 2002, 
+                    "allowed_lifts": [lift_selected],
+                    "call_replacement_priority": "HIGH",
+                    "destination": 0,
                     }
                 }
             }
