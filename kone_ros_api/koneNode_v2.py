@@ -127,6 +127,7 @@ class LiftNode(Node):
             self.prev_rmf_lift_request[current_lift_index].destination_floor == msg.destination_floor
             and self.prev_rmf_lift_request[current_lift_index].lift_name == msg.lift_name
             and self.prev_rmf_lift_request[current_lift_index].session_id == msg.session_id
+            and self.prev_rmf_lift_request[current_lift_index].door_state == msg.door_state
         ):
             req_time_elapsed = msg.request_time.sec - self.prev_rmf_lift_request[current_lift_index].request_time.sec
             print ("req_time_elapsed: " + str(req_time_elapsed))
@@ -144,7 +145,10 @@ class LiftNode(Node):
         if current_dest_floor != current_source_floor:
 
             self.koneAdaptorGalen.updateDestFloor(msg.lift_name, msg.destination_floor)
-            self.koneAdaptorGalen.update_door_holding_task(msg.lift_name, msg.destination_floor)  #update this task list, so that door holding will be perform at the floor with matched liftname
+
+            # only need to hold the door when requested door state is 'OPEN'
+            if (msg.door_state == 2):
+                self.koneAdaptorGalen.update_door_holding_task(msg.lift_name, msg.destination_floor)  #update this task list, so that door holding will be perform at the floor with matched liftname
 
             self.get_logger().info(
                 "Sending lift command paylod now. Lift: %s, Destination Floor: %s" %(msg.lift_name, msg.destination_floor)
@@ -164,6 +168,19 @@ class LiftNode(Node):
             self.get_logger().info("Sending lift command paylod now. Lift: %s , Destination floor == Current floor, opening door now." % msg.lift_name )
             
             self.koneAdaptorGalen.liftLandingCall(current_dest_floor, msg.lift_name)
+
+            # Update prev_rmf_lift_request to latest request
+            self.prev_rmf_lift_request[current_lift_index] = msg
+        
+        # at destination floor but current door state is "OPEN", and target door state is "CLOSED"
+        elif (current_dest_floor == current_source_floor and current_lift_door_state == 2 and msg.door_state == 0):   
+            
+            self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, msg.destination_floor)  #closing lift door by setting soft & hard time to 0
+
+            self.get_logger().info("Sending lift command paylod now. Lift: %s , Destination floor == Current floor, closing door now." % msg.lift_name )
+            
+            # Update prev_rmf_lift_request to latest request
+            self.prev_rmf_lift_request[current_lift_index] = msg
         else:
             self.get_logger().info("Lift: %s , Destination floor == Current floor, door state is matched. Skipping!" % msg.lift_name )
 

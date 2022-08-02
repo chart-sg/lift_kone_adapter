@@ -526,10 +526,20 @@ class koneAdaptor:
         self.sendLiftCommand(payload)
         self.runSocketTilComplete()
 
-    def generatePayload_DoorHolding(self, floor, liftname):
+    def generatePayload_DoorHolding(self, floor, liftname, target_door_state):
         lift_selected = self.liftnameliftDeckDict[liftname]
         floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(floor))
-        print ("Door holding lift: " + str(lift_selected) + "; floor: " + floor_areaID)
+        hard_time = 0
+        soft_time = 0
+        if (target_door_state == "OPEN"):
+            hard_time = self.door_holding_duration_hard 
+            soft_time = self.door_holding_duration_soft 
+            print ("Door holding lift: " + str(lift_selected) + "; floor: " + floor_areaID)
+        elif (target_door_state == "CLOSE"):
+            hard_time = 0
+            soft_time = 0
+            print ("Door closing lift: " + str(lift_selected) + "; floor: " + floor_areaID)
+
         payload ={
                     "type": "lift-call-api-v2",
                     "buildingId": self.buildingID,
@@ -539,14 +549,22 @@ class koneAdaptor:
                         "time": datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
                         "lift_deck": lift_selected,
                         "served_area": floor_areaID,
-                        "hard_time": self.door_holding_duration_hard,
-                        "soft_time": self.door_holding_duration_soft,
+                        "hard_time": hard_time,
+                        "soft_time": soft_time,
                     },
                 }
         return payload
     
     def liftDoorHoldingCall(self, floor, liftname):
-        payload = self.generatePayload_DoorHolding(floor, liftname)
+        payload = self.generatePayload_DoorHolding(floor, liftname, "OPEN")
+        self.sendLiftDoorHoldingCommand(payload)
+        self.runSocketTilComplete_dh()
+        #self.liftDoorHoldingCall(doorholding_floor, self.current_liftstate_list[int(cur_liftname)-1].lift_name)
+        
+    def liftDoorClosingCall(self, floor, liftname):
+        lift_selected = self.liftnameliftDeckDict[liftname]
+        floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(floor))
+        payload = self.generatePayload_DoorHolding(floor_areaID, lift_selected, "CLOSE")
         self.sendLiftDoorHoldingCommand(payload)
         self.runSocketTilComplete_dh()
 
