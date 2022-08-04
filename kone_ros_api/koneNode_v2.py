@@ -86,6 +86,10 @@ class LiftNode(Node):
             print ("time_elapsed_since_last_ws_opened: " + str(time_elapsed_since_last_ws_opened))
             self.reset_liftstate_ws = True
             self.koneAdaptorGalen.closeSocketMsg_state(0)
+        
+        # to check the Authentication expiration status, token will be expired for every 3600 seconds
+        # if it is expired, then re-post to request the token again
+        self.koneAdaptorGalen.checkAuthenticationExpiration()
 
     def liftstate_websocket(self, adaptername):
         while True:

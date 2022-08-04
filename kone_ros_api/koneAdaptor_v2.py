@@ -82,6 +82,8 @@ class koneAdaptor:
 
         self.door_holding_task = [] # door holding floor info
         
+        self.last_authentication_timestamp = 0
+        self.authentication_expired_duration = 3540 # seconds (set to 59 minutes, authentication will be expired in 60 minutes for every token requested)
 
 
         print("KoneAdaptor V2 is alive!")
@@ -130,6 +132,8 @@ class koneAdaptor:
         self.connectionURL = (
             "wss://dev.kone.com/stream-v2?accessToken=" + self.sessionToken
         )
+        # record authentication time, for resetting purpose
+        self.last_authentication_timestamp = time.time()
 
 
     def getResource(self):
@@ -188,8 +192,16 @@ class koneAdaptor:
         pprint(responseinDict)
         print('\n')
 
+    def checkAuthenticationExpiration(self):
+        last_authentication_elapsed_duration = time.time() - self.last_authentication_timestamp
+        if (last_authentication_elapsed_duration >= self.authentication_expired_duration):
+            print ("last_authentication_elapsed_duration: " + str(last_authentication_elapsed_duration))
+            print ("Authentication expired! Repost to get the token.")
+            self.getToken()
+
     def sendLiftCommand(self, payload):
         # print("sending lift command with the following payload %s" % payload)
+
         self.ws = websocket.WebSocketApp(
             url=self.connectionURL,
             subprotocols=self.subproto,
@@ -561,10 +573,9 @@ class koneAdaptor:
         self.runSocketTilComplete_dh()
         #self.liftDoorHoldingCall(doorholding_floor, self.current_liftstate_list[int(cur_liftname)-1].lift_name)
         
-    def liftDoorClosingCall(self, floor, liftname):
-        lift_selected = self.liftnameliftDeckDict[liftname]
-        floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(floor))
-        payload = self.generatePayload_DoorHolding(floor_areaID, lift_selected, "CLOSE")
+    def liftDoorClosingCall(self, liftname, floor):
+
+        payload = self.generatePayload_DoorHolding(floor, liftname, "CLOSE")
         self.sendLiftDoorHoldingCommand(payload)
         self.runSocketTilComplete_dh()
 
