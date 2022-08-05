@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-# 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
 
-from numpy import empty, source
 import rclpy
 import sys
 from rclpy.node import Node
@@ -9,7 +7,6 @@ from rclpy.executors import ExternalShutdownException
 
 from kone_ros_api.koneAdaptor_v2 import koneAdaptor
 from rmf_lift_msgs.msg import LiftState, LiftRequest
-from rmf_fleet_msgs.msg import FleetState, RobotState, Location
 
 import time
 from threading import Thread
@@ -207,5 +204,4 @@ def main(args=None):
 
 
 if __name__ == "__main__":
-    # Runs a listener node when this script is run directly (not through an entrypoint)
     main()

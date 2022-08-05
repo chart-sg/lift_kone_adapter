@@ -3,12 +3,9 @@ import requests
 import json
 import pprint
 import websocket
-from websocket import create_connection
 
-# from websockets import connect
-from requests.sessions import ChunkedEncodingError, session
 import time
-from rmf_lift_msgs.msg import LiftState, LiftRequest
+from rmf_lift_msgs.msg import LiftState
 
 from pprint import pprint
 import datetime
@@ -31,11 +28,6 @@ class koneAdaptor:
         self.auth_server_url =  config_yaml['auth_server_url']
         self.requestHeaders = config_yaml['requestHeaders']
         self.subproto = ["koneapi"]
-
-        # galen lift
-        # self.token_req_payload = {"grant_type": "client_credentials", "scope": "robotcall/group:PZFtaS27eW:1 application/inventory", } # PZFtaS27eW is the building id for Galen
-
-        # sandbox lift
         self.token_req_payload = config_yaml['token_req_payload']
         
 
@@ -50,8 +42,6 @@ class koneAdaptor:
         self.door_holding_duration_hard = config_yaml['liftdoor_holding_duration_hard']
         self.door_holding_duration_soft = config_yaml['liftdoor_holding_duration_soft']
         self.token_response = None
-        # note the square bracket for WebSocketApp purposes
-        
         self.sessionToken = str
         self.sessionTokenType = None
         self.scopeOfAccess = None
@@ -615,7 +605,6 @@ class koneAdaptor:
 
 def main():
     #ONLY USED FOR ISOLATED TESTING
-    #TEMP ID AND SECRET ALSO WORKS FOR HEARTBEAT
     
     #sandbox
     clientID = '160fd5a3-2010-4348-8aec-644bb100bb93'
