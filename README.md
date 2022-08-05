@@ -20,7 +20,7 @@ There are 3 main nodes/files:
       - auth_server_url
       - requestHeaders
       - token_req_payload
-      - timeout
+      - lift_group_to_control
       - ws_url
       - liftdoor_holding_duration_hard
       - liftdoor_holding_duration_soft

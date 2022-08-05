@@ -39,6 +39,7 @@ class koneAdaptor:
         self.client_id = config_yaml['access_id']
         self.client_secret = config_yaml['access_secret']
         self.buildingID = config_yaml['buildingId']
+        self.lift_group_selected = config_yaml['lift_group_to_control']
         self.door_holding_duration_hard = config_yaml['liftdoor_holding_duration_hard']
         self.door_holding_duration_soft = config_yaml['liftdoor_holding_duration_soft']
         self.token_response = None
@@ -301,23 +302,22 @@ class koneAdaptor:
         
             
     def decodeLiftConfigMsg(self, msg):
-        lift_group_selected = 0 # to get the first lift group
 
         try:
             responseinDict = msg["data"]
-            self.liftGroup = responseinDict["groups"][lift_group_selected]["group_id"]
+            self.liftGroup = responseinDict["groups"][self.lift_group_selected]["group_id"]
         except:
-            print ("Error in getting group with group index: " + str(lift_group_selected))
+            print ("Error in getting group with group index: " + str(self.lift_group_selected))
 
         # getting lift terminal info
         try:
-              self.liftTerminalList = responseinDict["groups"][lift_group_selected]["terminals"]
+              self.liftTerminalList = responseinDict["groups"][self.lift_group_selected]["terminals"]
         except:
             print ("Error in getting lifts terminal list.")
 
         # getting lifts name, lift id, lift deck
         try:
-            for lift in responseinDict["groups"][lift_group_selected]["lifts"]:
+            for lift in responseinDict["groups"][self.lift_group_selected]["lifts"]:
                 self.liftNameList.append(lift["lift_name"])
                 self.liftIDList.append(lift["lift_id"])
                 self.liftDeckList.append(lift["decks"][0]["area_id"])
