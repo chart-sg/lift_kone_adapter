@@ -34,6 +34,7 @@ colcon build
 To access KONE API, you will need access_id and access_secret. To control a live elevator, you will need to get these id  & secret from KONE Personnel. If you just want to test with their sandbox, then you can get id  & secret from [KONE API Portal].
 ### 2. Get building id
 You can get the building id from KONE personnel, or getting the 'Resources Info' from KONE API (eg. GET /api/v2/application/self/resources.)
+
 The format will be building:[BUILDING_ID] 
 
 eg. building:HxKjGc3knnh
@@ -76,7 +77,7 @@ ros2 topic pub /lift_requests rmf_lift_msgs/LiftRequest "{request_time: {sec: $E
 ```
 
 ## Notes:
-Things to take note for KONE API 2.0:
+Things to take note for KONE API v2.0:
 1. For every authentication request posted, it will be expired in 3600s (1 hour). That's why koneNode getToken for every 3600s.
 2. Liftstate websocket will be closed for every 300s (5 minutes). That's why koneNode reopen the liftstate websocket for every 300s.
 3. Liftstate websocket will be closed if inactive for 60s (1 minute). That's why koneNode reopen the liftstate websocket if it is inactive for more thant 60s.
