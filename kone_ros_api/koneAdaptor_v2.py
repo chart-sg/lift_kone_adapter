@@ -83,7 +83,7 @@ class koneAdaptor:
         self.door_holding_task = [] # door holding floor info
         
         self.last_authentication_timestamp = 0
-        self.authentication_expired_duration = 3540 # seconds (set to 59 minutes, authentication will be expired in 60 minutes for every token requested)
+        self.authentication_expired_duration = 2640 # seconds (set to 44 minutes, authentication will be expired in 60 minutes for every token requested)
 
 
         print("KoneAdaptor V2 is alive!")
@@ -194,8 +194,8 @@ class koneAdaptor:
 
     def checkAuthenticationExpiration(self):
         last_authentication_elapsed_duration = time.time() - self.last_authentication_timestamp
+        print ("\n------last_authentication_elapsed_duration: " + str(last_authentication_elapsed_duration)+"\n")
         if (last_authentication_elapsed_duration >= self.authentication_expired_duration):
-            print ("last_authentication_elapsed_duration: " + str(last_authentication_elapsed_duration))
             print ("Authentication expired! Repost to get the token.")
             self.getToken()
 

@@ -47,6 +47,7 @@ class LiftNode(Node):
 
         self.reset_liftstate_ws = True #open ws for the 1st time
 
+        self.auth_expiration_checking_timer = self.create_timer(900.0, self.auth_expiration_checking)   #check for every 15 minutes
         self.reset_liftstate_ws_timer = self.create_timer(5.0, self.reset_liftstate_ws_CallBack)
         self.liftstate_timer = self.create_timer(1.0, self.liftStatePublisherCallBack)
         
@@ -71,6 +72,10 @@ class LiftNode(Node):
                 self.get_logger().info("Failure reading env.yaml")
             return parsed_yaml
 
+    def auth_expiration_checking(self):
+        # to check the Authentication expiration status, token will be expired for every 3600 seconds
+        # if it is expired, then re-post to request the token again
+        self.koneAdaptorGalen.checkAuthenticationExpiration()
 
     def reset_liftstate_ws_CallBack(self):
         # check if liftstate websocket is inactive for more than 59s or ws opened for more than 300s, then restart it
@@ -86,10 +91,6 @@ class LiftNode(Node):
             print ("time_elapsed_since_last_ws_opened: " + str(time_elapsed_since_last_ws_opened))
             self.reset_liftstate_ws = True
             self.koneAdaptorGalen.closeSocketMsg_state(0)
-        
-        # to check the Authentication expiration status, token will be expired for every 3600 seconds
-        # if it is expired, then re-post to request the token again
-        self.koneAdaptorGalen.checkAuthenticationExpiration()
 
     def liftstate_websocket(self, adaptername):
         while True:
