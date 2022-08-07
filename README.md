@@ -4,7 +4,7 @@ This KONE RMF Lift Adapter is developed by Centre for Healthcare Assistive & Rob
 There are 3 main nodes/files:
 1. [koneNode_v2.py]
    - subscribe ros2 RMF [/lift_requests] topic from RMF core
-   - publish ros2 RMF [/lift_states] topic from RMF core
+   - publish ros2 RMF [/lift_states] topic to RMF core
 
 2. [koneAdapter_v2.py]
    - send various lift commands to KONE API v2.0 via websocket
