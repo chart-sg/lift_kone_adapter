@@ -490,7 +490,7 @@ class koneAdaptor:
     def updateLiftStateList_door(self, msg):
         # only update stopping floor, door state here
 
-        cur_liftname = 0
+        cur_lift_index = 0
         cur_floor = "L1"
         cur_doorstate = 0
         try:
@@ -498,7 +498,7 @@ class koneAdaptor:
             if msg_content[1] == "doors":
                 lift_index = msg_content[0].split("_")
                 if lift_index[0] == "lift":
-                    cur_liftname = lift_index[1]
+                    cur_lift_index = self.liftIDList.index(int(lift_index[1]))
                     cur_floor = self.getCurrentFloor(msg)
                     cur_doorstate = self.getDoorState(msg)
                     
@@ -507,18 +507,18 @@ class koneAdaptor:
             return
         
         # Holding door opening time
-        if (cur_doorstate in [1,2]):    # door state = OPENING/OPENED
-            doorholding_floor = self.door_holding_task[int(cur_liftname)-1]
+        if (cur_doorstate == LiftState.DOOR_OPEN):    # door state = OPENED
+            doorholding_floor = self.door_holding_task[cur_lift_index]
             if (doorholding_floor != "" and cur_floor == doorholding_floor):
-                self.liftDoorHoldingCall(doorholding_floor, self.current_liftstate_list[int(cur_liftname)-1].lift_name)
-                print("Holding lift " + self.current_liftstate_list[int(cur_liftname)-1].lift_name + " door at " + doorholding_floor)
-                self.door_holding_task[int(cur_liftname)-1] = ""    # reset doorholding floor info
+                self.liftDoorHoldingCall(doorholding_floor, self.current_liftstate_list[cur_lift_index].lift_name)
+                print("Holding lift " + self.current_liftstate_list[cur_lift_index].lift_name + " door at " + doorholding_floor)
+                self.door_holding_task[cur_lift_index] = ""    # reset doorholding floor info
 
-        self.current_liftstate_list[int(cur_liftname)-1].current_floor = cur_floor
-        self.current_liftstate_list[int(cur_liftname)-1].door_state = cur_doorstate
-        self.current_liftstate_list[int(cur_liftname)-1].motion_state = LiftState.MOTION_STOPPED #stopped, to update here because sometime will receive "DECELERATIMG" even after "STOPPED"
+        self.current_liftstate_list[cur_lift_index].current_floor = cur_floor
+        self.current_liftstate_list[cur_lift_index].door_state = cur_doorstate
+        self.current_liftstate_list[cur_lift_index].motion_state = LiftState.MOTION_STOPPED #stopped, to update here because sometime will receive "DECELERATIMG" even after "STOPPED"
 
-        print ("Updated LiftState lift: " + self.current_liftstate_list[int(cur_liftname)-1].lift_name + ", floor: " + self.current_liftstate_list[int(cur_liftname)-1].current_floor + ", door: " + str(self.current_liftstate_list[int(cur_liftname)-1].door_state)+ ","+ msg["data"]["state"])
+        print ("Updated LiftState lift: " + self.current_liftstate_list[cur_lift_index].lift_name + ", floor: " + self.current_liftstate_list[cur_lift_index].current_floor + ", door: " + str(self.current_liftstate_list[cur_lift_index].door_state)+ ","+ msg["data"]["state"])
 
     def getTransitionFloor(self, msg):
         transition_floor = "L1"
