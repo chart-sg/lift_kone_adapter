@@ -53,6 +53,7 @@ class koneAdaptor:
         self.liftNameList = []
         self.liftGroup = None
         self.floorAreaList = []
+        self.floorIDList = []
         self.floorNameList = []
         self.liftDeckList = []
         self.areaLevelDict = {}
@@ -269,7 +270,11 @@ class koneAdaptor:
         if typeOfMsg == 201:
             print ("\nLiftstate monitoring event in progress...\n")
         elif typeOfMsg in self.liftstate_monitoring_topic_list:
-            self.updateLiftStateList(msg)
+            topic_type = typeOfMsg.split("/")
+            if (topic_type[1] == "doors"):
+                self.updateLiftStateList_door(msg)
+            elif (topic_type[1] == "position"):
+                self.updateLiftStateList_motion(msg)
 
     def onSocketMsg_dh(self, message):
         msg = json.loads(message)
@@ -327,10 +332,11 @@ class koneAdaptor:
             print ("Error in getting lifts name, lift id, lift deck.")
 
 
-        # getting area id 
+        # getting area id
         try:
             for dest in responseinDict["destinations"]:
                 self.floorAreaList.append(dest["area_id"])
+                self.floorIDList.append(dest["group_floor_id"])
                 self.floorNameList.append(dest["short_name"])
                 floor_name_from_config = ""
                 if dest["short_name"][0] == "B":
@@ -340,13 +346,18 @@ class koneAdaptor:
                 self.areaLevelDict[dest["area_id"]] = floor_name_from_config
                 self.BuildingAvailableFloor.append(floor_name_from_config)
         except:
-            print ("Error in getting floorAreaList, floorNameList.")
+            print ("Error in getting floorAreaList, floorIDList, floorNameList.")
 
         # generate liftstate monitoring subtopic based on liftid feedback from building topo
         try:
             for i in range (len(self.liftIDList)):
+                # to get stopping floor & door state
                 topic = "lift_" + str(self.liftIDList[i]) + "/doors"
                 self.liftstate_monitoring_topic_list.append(topic)
+                # to get motion state & transition floor
+                topic = "lift_" + str(self.liftIDList[i]) + "/position"
+                self.liftstate_monitoring_topic_list.append(topic)
+
         except:
             print ("Error in generating liftstate monitoring subtopic.")
             self.liftstate_monitoring_topic_list = ["lift_1/doors", "lift_2/doors", "lift_3/doors"]
@@ -359,6 +370,7 @@ class koneAdaptor:
         print ("Lift ID: " + str(self.liftIDList))
         print ("Lift deck name: " + str(self.liftDeckList))
         print ("Floor Area: " + str(self.floorAreaList))
+        print ("Floor ID: " + str(self.floorIDList))
         print ("Floor name: " + str(self.floorNameList))
         print ("areaLevelDict: " + str(self.areaLevelDict))
         print ("liftnameliftDeckDict: " + str(self.liftnameliftDeckDict))
@@ -438,8 +450,45 @@ class koneAdaptor:
         self.ws_state.run_forever()
         return False
 
-    def updateLiftStateList(self, msg):
-        # only update floor, door state here
+    def updateLiftStateList_motion(self, msg):
+        # only update lift motion, lift transition floor here
+        try:
+            msg_content = msg["subtopic"].split("/")
+            if msg_content[1] == "position":
+                lift_index = msg_content[0].split("_")
+                if lift_index[0] == "lift":
+                    cur_lift_index = self.liftIDList.index(int(lift_index[1]))
+                    cur_liftname = self.liftNameList[cur_lift_index]
+
+                    cur_motion = msg["data"]["moving_state"]
+                    cur_direction = msg["data"]["dir"]
+                    cur_lift_motion = self.getLiftMotionState(msg)
+                    cur_transition_floor = self.getTransitionFloor(msg)
+
+                    self.current_liftstate_list[cur_lift_index].motion_state = cur_lift_motion
+                    self.current_liftstate_list[cur_lift_index].current_floor = cur_transition_floor
+                    
+                    print("-----transition----- lift: " + cur_liftname + ", motion: " + str(cur_lift_motion) + "," + cur_motion + "," + cur_direction + " floor: " + cur_transition_floor)
+
+                    
+        except:
+            print ("Failed in decoding liftstate data (motion) from websocket.")
+            return
+
+    def getLiftMotionState(self, msg):
+        lift_motion_state = LiftState.MOTION_UNKNOWN
+        cur_motion = msg["data"]["moving_state"]
+        cur_direction = msg["data"]["dir"]
+        if (cur_motion == "STANDING"):
+            lift_motion_state = LiftState.MOTION_STOPPED
+        elif (cur_direction == "UP"):
+            lift_motion_state = LiftState.MOTION_UP
+        elif (cur_direction == "DOWN"):
+            lift_motion_state = LiftState.MOTION_DOWN
+        return lift_motion_state
+
+    def updateLiftStateList_door(self, msg):
+        # only update stopping floor, door state here
 
         cur_liftname = 0
         cur_floor = "L1"
@@ -454,7 +503,7 @@ class koneAdaptor:
                     cur_doorstate = self.getDoorState(msg)
                     
         except:
-            print ("Failed in decoding liftstate data from websocket.")
+            print ("Failed in decoding liftstate data (door) from websocket.")
             return
         
         # Holding door opening time
@@ -467,9 +516,21 @@ class koneAdaptor:
 
         self.current_liftstate_list[int(cur_liftname)-1].current_floor = cur_floor
         self.current_liftstate_list[int(cur_liftname)-1].door_state = cur_doorstate
+        self.current_liftstate_list[int(cur_liftname)-1].motion_state = LiftState.MOTION_STOPPED #stopped, to update here because sometime will receive "DECELERATIMG" even after "STOPPED"
 
         print ("Updated LiftState lift: " + self.current_liftstate_list[int(cur_liftname)-1].lift_name + ", floor: " + self.current_liftstate_list[int(cur_liftname)-1].current_floor + ", door: " + str(self.current_liftstate_list[int(cur_liftname)-1].door_state)+ ","+ msg["data"]["state"])
 
+    def getTransitionFloor(self, msg):
+        transition_floor = "L1"
+        floorID = msg["data"]["cur"]
+        areaID = 0
+        try:
+            cur_floor_index = self.floorIDList.index(floorID)
+            areaID = self.floorAreaList[cur_floor_index]
+            transition_floor = self.areaLevelDict[areaID]
+        except:
+            transition_floor = "L1"
+        return transition_floor
 
     def getCurrentFloor(self, msg):
         current_floor = "L1"
@@ -481,16 +542,16 @@ class koneAdaptor:
         return current_floor
 
     def getDoorState(self, msg):
-        doorState = 0
+        doorState = LiftState.DOOR_CLOSED
         raw_doorState = msg["data"]["state"]
         if raw_doorState == "OPENED":
-            doorState = 2
+            doorState = LiftState.DOOR_OPEN
         elif raw_doorState == "CLOSED":
-            doorState = 0
+            doorState = LiftState.DOOR_CLOSED
         elif raw_doorState == "OPENING":    # set OPENING to OPENED state because the state feeback is still OPENING even the door is already opened
-            doorState = 2
+            doorState = LiftState.DOOR_OPEN
         elif raw_doorState == "CLOSING":
-            doorState = 0   # put 0 here because sometime will receive a CLOSING even after door CLOSED from websocket 
+            doorState = LiftState.DOOR_CLOSED   # put 0 here because sometime will receive a CLOSING even after door CLOSED from websocket 
         return doorState
 
     def updateDestFloor(self, liftname, newDestFloor):
