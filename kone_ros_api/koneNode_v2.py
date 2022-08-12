@@ -113,7 +113,7 @@ class LiftNode(Node):
             return
 
         # End session
-        if msg.request_type == 0:
+        if msg.request_type == LiftRequest.REQUEST_END_SESSION:
             self.get_logger().info("Recieved an end session. Ending session")
             self.koneAdaptorGalen.updateSessionID(msg.lift_name, "")
             return
@@ -124,7 +124,7 @@ class LiftNode(Node):
 
         current_lift_index = self.koneAdaptorGalen.liftNameList.index(msg.lift_name)
 
-        # prev req == cur req and time elapsed < 60 seconds, then return and do nothing
+        # prev req == cur req and time elapsed < 30 seconds, then return and do nothing
         if (
             self.prev_rmf_lift_request[current_lift_index].destination_floor == msg.destination_floor
             and self.prev_rmf_lift_request[current_lift_index].lift_name == msg.lift_name
@@ -149,7 +149,7 @@ class LiftNode(Node):
             self.koneAdaptorGalen.updateDestFloor(msg.lift_name, msg.destination_floor)
 
             # only need to hold the door when requested door state is 'OPEN'
-            if (msg.door_state == 2):
+            if (msg.door_state == LiftRequest.DOOR_OPEN):
                 self.koneAdaptorGalen.update_door_holding_task(msg.lift_name, msg.destination_floor)  #update this task list, so that door holding will be perform at the floor with matched liftname
 
             self.get_logger().info(
@@ -163,7 +163,7 @@ class LiftNode(Node):
             self.prev_rmf_lift_request[current_lift_index] = msg
         
         # at destination floor but current door state is "CLOSED", and target door state is "OPEN"
-        elif (current_dest_floor == current_source_floor and current_lift_door_state == 0 and msg.door_state == 2):   
+        elif (current_dest_floor == current_source_floor and current_lift_door_state == LiftState.DOOR_CLOSED and msg.door_state == LiftRequest.DOOR_OPEN):   
             
             self.koneAdaptorGalen.update_door_holding_task(msg.lift_name, msg.destination_floor)  #update this task list, so that door holding will be perform at the floor with matched liftname
 
@@ -175,7 +175,7 @@ class LiftNode(Node):
             self.prev_rmf_lift_request[current_lift_index] = msg
         
         # at destination floor but current door state is "OPEN", and target door state is "CLOSED"
-        elif (current_dest_floor == current_source_floor and current_lift_door_state == 2 and msg.door_state == 0):   
+        elif (current_dest_floor == current_source_floor and current_lift_door_state == LiftState.DOOR_OPEN and msg.door_state == LiftRequest.DOOR_CLOSED):   
             
             self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, msg.destination_floor)  #closing lift door by setting soft & hard time to 0
 

@@ -505,7 +505,12 @@ class koneAdaptor:
         except:
             print ("Failed in decoding liftstate data (door) from websocket.")
             return
-        
+
+        self.current_liftstate_list[cur_lift_index].current_floor = cur_floor
+        self.current_liftstate_list[cur_lift_index].door_state = cur_doorstate
+        self.current_liftstate_list[cur_lift_index].motion_state = LiftState.MOTION_STOPPED #stopped, to update here because sometime will receive "DECELERATIMG" even after "STOPPED"
+        print ("Updated LiftState lift: " + self.current_liftstate_list[cur_lift_index].lift_name + ", floor: " + self.current_liftstate_list[cur_lift_index].current_floor + ", door: " + str(self.current_liftstate_list[cur_lift_index].door_state)+ ","+ msg["data"]["state"])
+
         # Holding door opening time
         if (cur_doorstate == LiftState.DOOR_OPEN):    # door state = OPENED
             doorholding_floor = self.door_holding_task[cur_lift_index]
@@ -514,11 +519,6 @@ class koneAdaptor:
                 print("Holding lift " + self.current_liftstate_list[cur_lift_index].lift_name + " door at " + doorholding_floor)
                 self.door_holding_task[cur_lift_index] = ""    # reset doorholding floor info
 
-        self.current_liftstate_list[cur_lift_index].current_floor = cur_floor
-        self.current_liftstate_list[cur_lift_index].door_state = cur_doorstate
-        self.current_liftstate_list[cur_lift_index].motion_state = LiftState.MOTION_STOPPED #stopped, to update here because sometime will receive "DECELERATIMG" even after "STOPPED"
-
-        print ("Updated LiftState lift: " + self.current_liftstate_list[cur_lift_index].lift_name + ", floor: " + self.current_liftstate_list[cur_lift_index].current_floor + ", door: " + str(self.current_liftstate_list[cur_lift_index].door_state)+ ","+ msg["data"]["state"])
 
     def getTransitionFloor(self, msg):
         transition_floor = "L1"
