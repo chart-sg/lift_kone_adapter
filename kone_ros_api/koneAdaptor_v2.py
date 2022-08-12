@@ -5,7 +5,7 @@ import pprint
 import websocket
 
 import time
-from rmf_lift_msgs.msg import LiftState
+from rmf_lift_msgs.msg import LiftState, LiftRequest
 
 from pprint import pprint
 import datetime
@@ -97,7 +97,7 @@ class koneAdaptor:
             self.current_liftstate_list.append(LiftState())
             self.current_liftstate_list[i].lift_name = self.liftNameList[i]
             self.current_liftstate_list[i].available_modes =  [0, 1, 2, 3, 4, 5]
-            self.current_liftstate_list[i].current_mode = 2
+            self.current_liftstate_list[i].current_mode = LiftState.MODE_HUMAN
             self.current_liftstate_list[i].available_floors = self.BuildingAvailableFloor
             self.current_liftstate_list[i].current_floor = "L1"
             self.current_liftstate_list[i].door_state = 0
@@ -561,6 +561,15 @@ class koneAdaptor:
     def updateSessionID(self,liftname,newSessionID):
         lift_index = self.liftNameList.index(liftname)
         self.current_liftstate_list[lift_index].session_id = newSessionID
+    
+    def updateLiftMode(self,liftname,mode):
+        lift_index = self.liftNameList.index(liftname)
+        mode_set = LiftRequest.REQUEST_END_SESSION
+        if (mode == LiftRequest.REQUEST_AGV_MODE):
+            mode_set = LiftState.MODE_AGV
+        elif (mode == LiftRequest.REQUEST_HUMAN_MODE):
+            mode_set = LiftState.MODE_HUMAN
+        self.current_liftstate_list[lift_index].current_mode = mode_set
 
     def generatePayload_LiftDestinationCall(self, sourceLvl, destLvl, liftname):
         lift_selected = self.liftnameliftDeckDict[liftname]

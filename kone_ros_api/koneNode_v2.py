@@ -116,10 +116,13 @@ class LiftNode(Node):
         if msg.request_type == LiftRequest.REQUEST_END_SESSION:
             self.get_logger().info("Recieved an end session. Ending session")
             self.koneAdaptorGalen.updateSessionID(msg.lift_name, "")
+            self.koneAdaptorGalen.updateLiftMode(msg.lift_name, LiftRequest.REQUEST_HUMAN_MODE)   # reset to human mode
             return
 
         # Update session ID
         self.koneAdaptorGalen.updateSessionID(msg.lift_name, msg.session_id) 
+        # Update lift mode
+        self.koneAdaptorGalen.updateLiftMode(msg.lift_name, msg.request_type)
 
 
         current_lift_index = self.koneAdaptorGalen.liftNameList.index(msg.lift_name)
