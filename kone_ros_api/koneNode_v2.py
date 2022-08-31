@@ -114,7 +114,11 @@ class LiftNode(Node):
 
         # End session
         if msg.request_type == LiftRequest.REQUEST_END_SESSION:
-            self.get_logger().info("Recieved an end session. Ending session")
+            self.get_logger().info("Received an end session. Ending session")
+            
+            # close lift door
+            self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, msg.destination_floor)  #closing lift door by setting soft & hard time to 0
+
             self.koneAdaptorGalen.updateSessionID(msg.lift_name, "")
             self.koneAdaptorGalen.updateLiftMode(msg.lift_name, LiftRequest.REQUEST_HUMAN_MODE)   # reset to human mode
             return
