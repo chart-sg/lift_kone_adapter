@@ -45,6 +45,15 @@ cd ..
 source YOUR_RMF_Lift_MSG_WORKSPACE (eg. source ~/rmf_ws/install/setup.bash)
 colcon build
 ```
+## Dockerfile
+To quickly start running your own KONE RMF Lift Adapter with the v2 API. 
+
+If you get a <code>KeyError: 'access_token'</code> error, please check that your env.yaml's <code>access_id/access_secret</code> is correct.
+```
+
+docker build -f src/kone-ros-api/Dockerfile -t kone .
+docker run -it --network host --mount type=bind,source=$PWD/src/kone-ros-api/config/env.yaml,destination=/opt/rmf/install/kone_ros_api/share/kone_ros_api/config/env.yaml kone:latest /bin/bash
+```
 
 ## Fill up the config/env.yaml before you run this package
 ### 1. Get access_id and access_secret for KONE Elevator
