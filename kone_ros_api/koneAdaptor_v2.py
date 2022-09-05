@@ -640,9 +640,31 @@ class koneAdaptor:
         self.sendLiftDoorHoldingCommand(payload)
         self.runSocketTilComplete_dh()
 
+    def LiftLandingCall_action_type_generator(self, liftname, dest_floor):
+        lift_index = self.liftNameList.index(liftname)
+        cur_floor = self.current_liftstate_list[lift_index].current_floor
+        dest_floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(dest_floor))
+        dest_floor_index = self.floorAreaList.index(int(dest_floor_areaID))
+        cur_floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(cur_floor))
+        cur_floor_index = self.floorAreaList.index(int(cur_floor_areaID))
+        # print ("cur_floor_index: " + str(cur_floor_index) + ", dest_floor_index: " + str(dest_floor_index))
+
+        action_type = 2001 # up liftlanding call
+        if (dest_floor_index < cur_floor_index):
+            action_type = 2002 # down liftlanding call
+        return action_type
+
     def generatePayload_LiftLandingCall(self, sourceLvl, liftname):
         lift_selected = self.liftnameliftDeckDict[liftname]
         source_floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(sourceLvl))
+
+        action_type = self.LiftLandingCall_action_type_generator(liftname,sourceLvl)
+        # print ("action_type: " + str(action_type))
+        if (action_type == 2001):
+            action_type_msg = "lift landing call UP."
+        else:
+            action_type_msg = "lift landing call DOWN."
+        print (action_type_msg)
         
         payload = {
             "type": "lift-call-api-v2",
@@ -655,7 +677,7 @@ class koneAdaptor:
                 "time": datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
                 "terminal": self.liftTerminalList[0],
                 "call": { 
-                    "action": 2002, 
+                    "action": action_type, 
                     "allowed_lifts": [lift_selected],
                     "call_replacement_priority": "HIGH",
                     "destination": 0,
