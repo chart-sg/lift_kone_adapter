@@ -138,12 +138,22 @@ class LiftNode(Node):
             and self.prev_rmf_lift_request[current_lift_index].session_id == msg.session_id
             and self.prev_rmf_lift_request[current_lift_index].door_state == msg.door_state
         ):
-            req_time_elapsed = msg.request_time.sec - self.prev_rmf_lift_request[current_lift_index].request_time.sec
-            print ("req_time_elapsed: " + str(req_time_elapsed))
-            if (req_time_elapsed < 30):
-                self.get_logger().info("Duplicated lift request. Skipping !")
-                return
+            req_req_time_elapsed = msg.request_time.sec - self.prev_rmf_lift_request[current_lift_index].request_time.sec
+            print ("req_req_time_elapsed: " + str(req_req_time_elapsed))
+            req_now_time_elapsed = abs(msg.request_time.sec - self.get_clock().now().to_msg().sec)
+            print ("req-now_time_elapsed: " + str(req_now_time_elapsed))
 
+            # req-req < self.request_duplicated_duration. then ignore 
+            # req-req == 0 and req-now > self.request_duplicated_duration, then proceed
+            if req_req_time_elapsed == 0.0:
+                if req_now_time_elapsed < 20:
+                    print("Duplicated request, same request time, less than 20s, skipped!")
+                    return
+                else:
+                    print("Duplicated request, same request time, but more than 20s, will proceed!")
+            elif req_req_time_elapsed < 30:
+                print("Duplicated request, skipped!")
+                return
 
         # Thsi is a valid lift request, update the request info now
         current_dest_floor = msg.destination_floor
