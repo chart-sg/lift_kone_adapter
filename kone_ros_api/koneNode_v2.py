@@ -146,12 +146,12 @@ class LiftNode(Node):
             # req-req < self.request_duplicated_duration. then ignore 
             # req-req == 0 and req-now > self.request_duplicated_duration, then proceed
             if req_req_time_elapsed == 0.0:
-                if req_now_time_elapsed < 20:
-                    print("Duplicated request, same request time, less than 20s, skipped!")
+                if req_now_time_elapsed < 10:
+                    print("Duplicated request, same request time, less than 10s, skipped!")
                     return
                 else:
-                    print("Duplicated request, same request time, but more than 20s, will proceed!")
-            elif req_req_time_elapsed < 30:
+                    print("Duplicated request, same request time, but more than 10s, will proceed!")
+            elif req_req_time_elapsed < 10:
                 print("Duplicated request, skipped!")
                 return
 
