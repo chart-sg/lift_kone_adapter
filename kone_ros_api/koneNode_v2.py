@@ -131,7 +131,6 @@ class LiftNode(Node):
 
         current_lift_index = self.koneAdaptorGalen.liftNameList.index(msg.lift_name)
 
-        # prev req == cur req and time elapsed < 30 seconds, then return and do nothing
         if (
             self.prev_rmf_lift_request[current_lift_index].destination_floor == msg.destination_floor
             and self.prev_rmf_lift_request[current_lift_index].lift_name == msg.lift_name
@@ -143,17 +142,12 @@ class LiftNode(Node):
             req_now_time_elapsed = abs(msg.request_time.sec - self.get_clock().now().to_msg().sec)
             print ("req-now_time_elapsed: " + str(req_now_time_elapsed))
 
-            # req-req < self.request_duplicated_duration. then ignore 
-            # req-req == 0 and req-now > self.request_duplicated_duration, then proceed
-            if req_req_time_elapsed == 0.0:
+            if req_req_time_elapsed < 20:
                 if req_now_time_elapsed < 10:
-                    print("Duplicated request, same request time, less than 10s, skipped!")
+                    print("Duplicated request, req-now less than 10s, skipped!")
                     return
                 else:
-                    print("Duplicated request, same request time, but more than 10s, will proceed!")
-            elif req_req_time_elapsed < 20:
-                print("Duplicated request, skipped!")
-                return
+                    print("Duplicated request, but req-now more than 10s, will proceed!")
 
         # Thsi is a valid lift request, update the request info now
         current_dest_floor = msg.destination_floor
