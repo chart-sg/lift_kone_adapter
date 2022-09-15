@@ -151,7 +151,7 @@ class LiftNode(Node):
                     return
                 else:
                     print("Duplicated request, same request time, but more than 10s, will proceed!")
-            elif req_req_time_elapsed < 10:
+            elif req_req_time_elapsed < 20:
                 print("Duplicated request, skipped!")
                 return
 
