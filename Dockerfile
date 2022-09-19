@@ -1,4 +1,4 @@
-FROM ghcr.io/junhaochng/rmf_deployment_template/builder-rmf
+FROM ghcr.io/sharp-rmf/rmf-deployment/builder-rmf
 
 WORKDIR /opt/rmf/src
 
