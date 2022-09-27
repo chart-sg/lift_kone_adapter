@@ -104,6 +104,12 @@ class koneAdaptor:
             self.current_liftstate_list[i].motion_state = 0
 
     def getToken(self):
+        print ("self.auth_server_url: " + str(self.auth_server_url))
+        print ("self.token_req_payload: " + str(self.token_req_payload))
+        print ("self.requestHeaders: " + str(self.requestHeaders))
+        print ("self.client_id: " + str(self.client_id))
+        print ("self.client_secret: " + str(self.client_secret))
+
         self.token_response = requests.post(
             self.auth_server_url,
             data=self.token_req_payload,
@@ -114,8 +120,8 @@ class koneAdaptor:
         responseInDict = json.loads(self.token_response.content)
         #self.logger('Initial response from websocket is \n')
         #self.logger(responseInDict)
-        # print ('\nInitial response from websocket is \n')
-        # pprint (responseInDict)
+        print ('\nInitial response from websocket is \n')
+        pprint (responseInDict)
 
         self.sessionToken = responseInDict['access_token']
         self.sessionTokenType = responseInDict['token_type']
@@ -603,14 +609,14 @@ class koneAdaptor:
         lift_selected = self.liftnameliftDeckDict[liftname]
         floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(floor))
         hard_time = 0
-        soft_time = 0
+        soft_time = 3
         if (target_door_state == "OPEN"):
             hard_time = self.door_holding_duration_hard 
             soft_time = self.door_holding_duration_soft 
             print ("Door holding lift: " + str(lift_selected) + "; floor: " + floor_areaID)
         elif (target_door_state == "CLOSE"):
             hard_time = 0
-            soft_time = 0
+            soft_time = 1
             print ("Door closing lift: " + str(lift_selected) + "; floor: " + floor_areaID)
 
         payload ={

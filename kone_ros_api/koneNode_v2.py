@@ -117,7 +117,7 @@ class LiftNode(Node):
             self.get_logger().info("Received an end session. Ending session")
             
             # close lift door
-            self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, msg.destination_floor)  #closing lift door by setting soft & hard time to 0
+            self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, msg.destination_floor)  #closing lift door by setting soft to 3 & hard time to 0
 
             self.koneAdaptorGalen.updateSessionID(msg.lift_name, "")
             self.koneAdaptorGalen.updateLiftMode(msg.lift_name, LiftRequest.REQUEST_HUMAN_MODE)   # reset to human mode
@@ -156,6 +156,10 @@ class LiftNode(Node):
 
         # moving to destination floor
         if current_dest_floor != current_source_floor:
+            
+            # rmf wont send door close command, so close door here and send lift to destination floor if curr door state is opened
+            if (current_lift_door_state == LiftState.DOOR_OPEN and msg.door_state == LiftRequest.DOOR_OPEN):
+                self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, current_source_floor)  #closing curr lift door by setting soft to 3 & hard time to 0
 
             self.koneAdaptorGalen.updateDestFloor(msg.lift_name, msg.destination_floor)
 
@@ -188,7 +192,7 @@ class LiftNode(Node):
         # at destination floor but current door state is "OPEN", and target door state is "CLOSED"
         elif (current_dest_floor == current_source_floor and current_lift_door_state == LiftState.DOOR_OPEN and msg.door_state == LiftRequest.DOOR_CLOSED):   
             
-            self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, msg.destination_floor)  #closing lift door by setting soft & hard time to 0
+            self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, msg.destination_floor)  #closing lift door by setting soft to 3 & hard time to 0
 
             self.get_logger().info("Sending lift command paylod now. Lift: %s , Destination floor == Current floor, closing door now." % msg.lift_name )
             
