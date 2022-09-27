@@ -609,14 +609,14 @@ class koneAdaptor:
         lift_selected = self.liftnameliftDeckDict[liftname]
         floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(floor))
         hard_time = 0
-        soft_time = 3
+        soft_time = 0
         if (target_door_state == "OPEN"):
             hard_time = self.door_holding_duration_hard 
             soft_time = self.door_holding_duration_soft 
             print ("Door holding lift: " + str(lift_selected) + "; floor: " + floor_areaID)
         elif (target_door_state == "CLOSE"):
             hard_time = 0
-            soft_time = 1
+            soft_time = 3
             print ("Door closing lift: " + str(lift_selected) + "; floor: " + floor_areaID)
 
         payload ={
