@@ -49,7 +49,7 @@ colcon build
 To quickly start running your own Kone RMF Lift Adapter with the Kone v2 API. Simply copy the docker file out, build it, and run it with the correct env.yaml file (which contains the secrets).
 > If you get a <code>KeyError: 'access_token'</code> error, please check that your env.yaml's <code>access_id/access_secret</code> is correct.
 ```
-docker build -f src/kone-ros-api/Dockerfile -t kone .
+docker build -f src/kone-ros-api/Dockerfile -t kone --build-arg GIT_VER=6e75d1c18d1132bf8bacd51b1fee29ee9b2dab42 . # To checkout git commit 6e75d1
 docker run -it --network host --mount type=bind,source=$PWD/src/kone-ros-api/config/env.yaml,destination=/opt/rmf/install/kone_ros_api/share/kone_ros_api/config/env.yaml kone:latest /bin/bash
 ```
 
