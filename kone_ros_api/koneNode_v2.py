@@ -157,9 +157,9 @@ class LiftNode(Node):
         # moving to destination floor
         if current_dest_floor != current_source_floor:
             
-            # rmf wont send door close command, so close door here and send lift to destination floor if curr door state is opened
-            if (current_lift_door_state == LiftState.DOOR_OPEN and msg.door_state == LiftRequest.DOOR_OPEN):
-                self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, current_source_floor)  #closing curr lift door by setting soft to 3 & hard time to 0
+            # # rmf wont send door close command, so close door here and send lift to destination floor if curr door state is opened
+            # if (current_lift_door_state == LiftState.DOOR_OPEN and msg.door_state == LiftRequest.DOOR_OPEN):
+            #     self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, current_source_floor)  #closing curr lift door by setting soft to 3 & hard time to 0
 
             self.koneAdaptorGalen.updateDestFloor(msg.lift_name, msg.destination_floor)
 

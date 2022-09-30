@@ -616,7 +616,7 @@ class koneAdaptor:
             print ("Door holding lift: " + str(lift_selected) + "; floor: " + floor_areaID)
         elif (target_door_state == "CLOSE"):
             hard_time = 0
-            soft_time = 3
+            soft_time = 0
             print ("Door closing lift: " + str(lift_selected) + "; floor: " + floor_areaID)
 
         payload ={
@@ -664,7 +664,9 @@ class koneAdaptor:
         lift_selected = self.liftnameliftDeckDict[liftname]
         source_floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(sourceLvl))
 
-        action_type = self.LiftLandingCall_action_type_generator(liftname,sourceLvl)
+        # action_type = self.LiftLandingCall_action_type_generator(liftname,sourceLvl)
+        action_type = 2001 # up liftlanding call
+
         # print ("action_type: " + str(action_type))
         if (action_type == 2001):
             action_type_msg = "lift landing call UP."
