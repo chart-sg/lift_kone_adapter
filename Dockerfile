@@ -1,9 +1,10 @@
 FROM ghcr.io/sharp-rmf/rmf-deployment/builder-rmf
-
+ARG GIT_VER=main
 WORKDIR /opt/rmf/src
 
 SHELL ["/bin/bash", "-c"]
-RUN git clone https://github.com/sharp-rmf/kone-ros-api.git
+RUN echo 'Checking out GIT version of repo:' {$GIT_VER}
+RUN git clone https://github.com/sharp-rmf/kone-ros-api.git && cd kone-ros-api && git checkout $GIT_VER
 
 WORKDIR /opt/rmf
 
