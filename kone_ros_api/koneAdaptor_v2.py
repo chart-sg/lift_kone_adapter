@@ -664,8 +664,8 @@ class koneAdaptor:
         lift_selected = self.liftnameliftDeckDict[liftname]
         source_floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(sourceLvl))
 
-        # action_type = self.LiftLandingCall_action_type_generator(liftname,sourceLvl)
-        action_type = 2001 # up liftlanding call
+        action_type = self.LiftLandingCall_action_type_generator(liftname,sourceLvl)
+        # action_type = 2001 # up liftlanding call
 
         # print ("action_type: " + str(action_type))
         if (action_type == 2001):
@@ -694,8 +694,35 @@ class koneAdaptor:
             }
         return payload
 
+    def generatePayload_LiftCarCall(self, sourceLvl, liftname):
+        lift_selected = self.liftnameliftDeckDict[liftname]
+        source_floor_areaID = str(dict((v,k) for k,v in self.areaLevelDict.items()).get(sourceLvl))
+
+        payload = {
+            "type": "lift-call-api-v2",
+            "buildingId": self.buildingID,
+            "callType": "action",
+            "groupId": "1",
+            "payload": {
+                "request_id": 1,
+                "area": lift_selected,
+                "time": datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
+                "terminal": self.liftTerminalList[0],
+                "call": { 
+                    "action": 5000, 
+                    "destination": source_floor_areaID
+                }
+                }  
+            }
+        return payload
+
     def liftLandingCall(self, sourceLvl, liftname):
         payload = self.generatePayload_LiftLandingCall(sourceLvl, liftname)
+        self.sendLiftCommand(payload)
+        self.runSocketTilComplete()
+    
+    def liftCarCall(self, sourceLvl, liftname):
+        payload = self.generatePayload_LiftCarCall(sourceLvl, liftname)
         self.sendLiftCommand(payload)
         self.runSocketTilComplete()
     

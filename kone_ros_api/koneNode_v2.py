@@ -157,10 +157,6 @@ class LiftNode(Node):
         # moving to destination floor
         if current_dest_floor != current_source_floor:
             
-            # # rmf wont send door close command, so close door here and send lift to destination floor if curr door state is opened
-            # if (current_lift_door_state == LiftState.DOOR_OPEN and msg.door_state == LiftRequest.DOOR_OPEN):
-            #     self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, current_source_floor)  #closing curr lift door by setting soft to 3 & hard time to 0
-
             self.koneAdaptorGalen.updateDestFloor(msg.lift_name, msg.destination_floor)
 
             # only need to hold the door when requested door state is 'OPEN'
@@ -171,8 +167,14 @@ class LiftNode(Node):
                 "Sending lift command paylod now. Lift: %s, Destination Floor: %s" %(msg.lift_name, msg.destination_floor)
             )
             
+            if (current_lift_door_state == LiftRequest.DOOR_OPEN):
+                # close door
+                self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, msg.destination_floor)  #closing lift door by setting soft to 3 & hard time to 0
+                self.get_logger().info("Sending lift command paylod now. Lift: %s, closing door now." % msg.lift_name )
+
             # self.koneAdaptorGalen.liftDestinationCall(current_source_floor, current_dest_floor, msg.lift_name)
-            self.koneAdaptorGalen.liftLandingCall(current_dest_floor, msg.lift_name)
+            # self.koneAdaptorGalen.liftLandingCall(current_dest_floor, msg.lift_name)
+            self.koneAdaptorGalen.liftCarCall(current_dest_floor, msg.lift_name)
 
             # Update prev_rmf_lift_request to latest request
             self.prev_rmf_lift_request[current_lift_index] = msg
@@ -184,7 +186,8 @@ class LiftNode(Node):
 
             self.get_logger().info("Sending lift command paylod now. Lift: %s , Destination floor == Current floor, opening door now." % msg.lift_name )
             
-            self.koneAdaptorGalen.liftLandingCall(current_dest_floor, msg.lift_name)
+            # self.koneAdaptorGalen.liftLandingCall(current_dest_floor, msg.lift_name)
+            self.koneAdaptorGalen.liftCarCall(current_dest_floor, msg.lift_name)
 
             # Update prev_rmf_lift_request to latest request
             self.prev_rmf_lift_request[current_lift_index] = msg
