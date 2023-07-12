@@ -281,6 +281,8 @@ class koneAdaptor:
                 self.updateLiftStateList_door(msg)
             elif (topic_type[1] == "position"):
                 self.updateLiftStateList_motion(msg)
+            elif (topic_type[1] == "status"):
+                self.updateLiftStateList_status(msg)
 
     def onSocketMsg_dh(self, message):
         msg = json.loads(message)
@@ -362,6 +364,9 @@ class koneAdaptor:
                 self.liftstate_monitoring_topic_list.append(topic)
                 # to get motion state & transition floor
                 topic = "lift_" + str(self.liftIDList[i]) + "/position"
+                self.liftstate_monitoring_topic_list.append(topic)
+                # to get lift status
+                topic = "lift_" + str(self.liftIDList[i]) + "/status"
                 self.liftstate_monitoring_topic_list.append(topic)
 
         except:
@@ -475,10 +480,37 @@ class koneAdaptor:
                     self.current_liftstate_list[cur_lift_index].current_floor = cur_transition_floor
                     
                     print("-----transition----- lift: " + cur_liftname + ", motion: " + str(cur_lift_motion) + "," + cur_motion + "," + cur_direction + " floor: " + cur_transition_floor)
-
                     
         except:
             print ("Failed in decoding liftstate data (motion) from websocket.")
+            return
+
+    def updateLiftStateList_status(self, msg):
+        # update lift fault status/ lift mode here
+        # print ("lift status: " + msg)
+        try:
+            msg_content = msg["subtopic"].split("/")
+            if msg_content[1] == "status":
+                lift_index = msg_content[0].split("_")
+                if lift_index[0] == "lift":
+                    cur_lift_index = self.liftIDList.index(int(lift_index[1]))
+                    cur_liftname = self.liftNameList[cur_lift_index]
+                    
+                    cur_fault_state = msg["data"]["fault_active"]
+                    cur_lift_mode = msg["data"]["lift_mode"]
+                    print("-----status----- lift: " + cur_liftname + ", fault: " + str(cur_fault_state) + ", mode: " + cur_lift_mode)
+                    # set lift mode to OFFLINE if fault state is true
+                    if cur_fault_state == True:
+                        self.current_liftstate_list[cur_lift_index].current_mode = LiftState.MODE_OFFLINE
+                    elif cur_lift_mode in [37,38]:
+                        self.current_liftstate_list[cur_lift_index].current_mode = LiftState.MODE_FIRE
+                    elif cur_lift_mode in [2,3,7,14,17,18,33]:
+                        self.current_liftstate_list[cur_lift_index].current_mode = LiftState.MODE_OFFLINE
+                    elif cur_lift_mode in [9,16,19,20,23,27,28,30]:
+                        self.current_liftstate_list[cur_lift_index].current_mode = LiftState.MODE_EMERGENCY
+                    
+        except:
+            print ("Failed in decoding liftstate data (status) from websocket.")
             return
 
     def getLiftMotionState(self, msg):

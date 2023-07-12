@@ -123,13 +123,20 @@ class LiftNode(Node):
             self.koneAdaptorGalen.updateLiftMode(msg.lift_name, LiftRequest.REQUEST_HUMAN_MODE)   # reset to human mode
             return
 
+        current_lift_index = self.koneAdaptorGalen.liftNameList.index(msg.lift_name)
+
+        # check if lift not in normal mode
+        current_lift_mode = self.koneAdaptorGalen.current_liftstate_list[current_lift_index].current_mode
+        
+        if  current_lift_mode not in [LiftState.MODE_HUMAN, LiftState.MODE_AGV]:
+            self.get_logger().info("Dropped lift request!! Lift: %s , mode: %s" %(msg.lift_name,current_lift_mode) )
+            return
+
         # Update session ID
         self.koneAdaptorGalen.updateSessionID(msg.lift_name, msg.session_id) 
         # Update lift mode
         self.koneAdaptorGalen.updateLiftMode(msg.lift_name, msg.request_type)
 
-
-        current_lift_index = self.koneAdaptorGalen.liftNameList.index(msg.lift_name)
 
         if (
             self.prev_rmf_lift_request[current_lift_index].destination_floor == msg.destination_floor
