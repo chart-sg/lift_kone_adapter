@@ -487,7 +487,7 @@ class koneAdaptor:
 
     def updateLiftStateList_status(self, msg):
         # update lift fault status/ lift mode here
-        # print ("lift status: " + msg)
+        # print ("lift status: " + str(msg))
         try:
             msg_content = msg["subtopic"].split("/")
             if msg_content[1] == "status":
@@ -496,13 +496,10 @@ class koneAdaptor:
                     cur_lift_index = self.liftIDList.index(int(lift_index[1]))
                     cur_liftname = self.liftNameList[cur_lift_index]
                     
-                    cur_fault_state = msg["data"]["fault_active"]
                     cur_lift_mode = msg["data"]["lift_mode"]
-                    print("-----status----- lift: " + cur_liftname + ", fault: " + str(cur_fault_state) + ", mode: " + str(cur_lift_mode))
+                    print("-----status----- lift: " + cur_liftname + ", mode: " + str(cur_lift_mode))
                     # set lift mode to OFFLINE if fault state is true
-                    if cur_fault_state == True:
-                        self.current_liftstate_list[cur_lift_index].current_mode = LiftState.MODE_OFFLINE
-                    elif cur_lift_mode in [37,38]:
+                    if cur_lift_mode in [37,38]:
                         self.current_liftstate_list[cur_lift_index].current_mode = LiftState.MODE_FIRE
                     elif cur_lift_mode in [2,3,7,14,17,18,33]:
                         self.current_liftstate_list[cur_lift_index].current_mode = LiftState.MODE_OFFLINE
