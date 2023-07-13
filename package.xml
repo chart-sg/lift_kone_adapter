@@ -4,7 +4,7 @@
   <name>kone_ros_api</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="jun_hao_chng@cgh.com.sg">jh</maintainer>
+  <maintainer email="keai_jiang_chee@cgh.com.sg">kj</maintainer>
   <license>TODO: License declaration</license>
 
   <test_depend>ament_copyright</test_depend>
