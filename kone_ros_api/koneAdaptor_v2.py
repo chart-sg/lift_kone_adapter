@@ -498,7 +498,7 @@ class koneAdaptor:
                     
                     cur_lift_mode = msg["data"]["lift_mode"]
                     print("-----status----- lift: " + cur_liftname + ", mode: " + str(cur_lift_mode))
-                    # set lift mode to OFFLINE if fault state is true
+                    
                     if cur_lift_mode in [37,38]:
                         self.current_liftstate_list[cur_lift_index].current_mode = LiftState.MODE_FIRE
                     elif cur_lift_mode in [2,3,7,14,17,18,33]:

@@ -16,6 +16,8 @@ import datetime
 import yaml, os
 from ament_index_python.packages import get_package_share_directory
 
+from std_msgs.msg import Bool
+
 
 class LiftNode(Node):
     def __init__(self, lift_name):
@@ -47,12 +49,36 @@ class LiftNode(Node):
         self.auth_expiration_checking_timer = self.create_timer(900.0, self.auth_expiration_checking)   #check for every 15 minutes
         self.reset_liftstate_ws_timer = self.create_timer(5.0, self.reset_liftstate_ws_CallBack)
         self.liftstate_timer = self.create_timer(1.0, self.liftStatePublisherCallBack)
+
+        
         
         threadKoneLiftstateWS = Thread(
             target=self.liftstate_websocket, name="koneliftstate", args=("koneliftstate",)
         )
         threadKoneLiftstateWS.daemon = True
         threadKoneLiftstateWS.start()
+
+        # checking emergency alarm
+        emergency_alarm_publishing_option = self.config_yaml['publish_emergency_alarm']
+        if (emergency_alarm_publishing_option):
+            print ("Checking emergency alarm..")
+            emergency_alarm_topic = self.config_yaml['emergency_alarm_topic_name']
+            self.emergency_alarm_pub = self.create_publisher(Bool, emergency_alarm_topic, 10)
+            self.emergency_alarm_checking_timer = self.create_timer(1.0, self.liftEmergencyAlarmCallBack)
+
+    def liftEmergencyAlarmCallBack(self):
+        emergency_state = Bool()
+        emergency_state.data = False
+        try:
+            for i in range(len(self.koneAdaptorGalen.current_liftstate_list)):
+                lift_mode = self.koneAdaptorGalen.current_liftstate_list[i].current_mode
+                if lift_mode in [LiftState.MODE_FIRE, LiftState.MODE_EMERGENCY]:
+                    emergency_state.data = True
+                    break
+            self.emergency_alarm_pub.publish(emergency_state)        
+        except:
+            self.get_logger().info("Error in publishing emergency alarm topic.")
+        
 
 
     def get_config(self):
@@ -176,7 +202,7 @@ class LiftNode(Node):
             
             if (current_lift_door_state == LiftRequest.DOOR_OPEN):
                 # close door
-                self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, msg.destination_floor)  #closing lift door by setting soft to 3 & hard time to 0
+                self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, msg.destination_floor)  #closing lift door by setting soft to 0 & hard time to 0
                 self.get_logger().info("Sending lift command paylod now. Lift: %s, closing door now." % msg.lift_name )
 
             # self.koneAdaptorGalen.liftDestinationCall(current_source_floor, current_dest_floor, msg.lift_name)
