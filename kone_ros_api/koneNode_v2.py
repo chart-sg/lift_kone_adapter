@@ -140,7 +140,7 @@ class LiftNode(Node):
 
         # End session
         if msg.request_type == LiftRequest.REQUEST_END_SESSION:
-            self.get_logger().info("Received an end session. Ending session")
+            self.get_logger().info("Received an end session. Ending session for lift: %s" %msg.lift_name)
             
             # close lift door
             self.koneAdaptorGalen.liftDoorClosingCall(msg.lift_name, msg.destination_floor)  #closing lift door by setting soft to 3 & hard time to 0
@@ -155,7 +155,7 @@ class LiftNode(Node):
         current_lift_mode = self.koneAdaptorGalen.current_liftstate_list[current_lift_index].current_mode
         
         if  current_lift_mode not in [LiftState.MODE_HUMAN, LiftState.MODE_AGV]:
-            self.get_logger().info("Dropped lift request!! Lift: %s , mode: %s" %(msg.lift_name,current_lift_mode) )
+            self.get_logger().info("Emergency/Fire Mode!! Dropped lift request!! Lift: %s , mode: %s" %(msg.lift_name,current_lift_mode) )
             return
 
         # Update session ID
@@ -177,10 +177,10 @@ class LiftNode(Node):
 
             if req_req_time_elapsed < 20:
                 if req_now_time_elapsed < 10:
-                    print("Duplicated request, req-now less than 10s, skipped!")
+                    self.get_logger().info("Duplicated request, req-now less than 10s, skipped!")
                     return
                 else:
-                    print("Duplicated request, but req-now more than 10s, will proceed!")
+                    self.get_logger().info("Duplicated request, but req-now more than 10s, will proceed!")
 
         # Thsi is a valid lift request, update the request info now
         current_dest_floor = msg.destination_floor
